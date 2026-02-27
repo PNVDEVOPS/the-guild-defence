@@ -18,9 +18,9 @@ const CONFIG = {
         TROLL:        { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL_MEDIUM: { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL_SMALL:  { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
-        ZIGZAG:       { file: 'sprites/demon.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
+        ZIGZAG:       { file: 'sprites/zigzag.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
         DASHER:       { file: 'sprites/dasher.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
-        SHOOTER:      { file: 'sprites/witch.png',   fw: 64,  fh: 64,  frames: 4, fps: 8 },
+        SHOOTER:      { file: 'sprites/witchмне .png',   fw: 64,  fh: 64,  frames: 4, fps: 8 },
         HEALER:       { file: 'sprites/healer.png',    fw: 64,  fh: 64,  frames: 4, fps: 6 },
         BOSS:         { file: 'sprites/boss.png',      fw: 128, fh: 128, frames: 4, fps: 6 },
         MEGA_BOSS:    { file: 'sprites/megaboss.png',  fw: 128, fh: 128, frames: 4, fps: 6 },
@@ -54,10 +54,10 @@ const CONFIG = {
         CROSSBOW:    'sprites/proj_crossbow.png',
         CANNON:      'sprites/proj_cannon.png',
         BOOMERANG:   'sprites/proj_boomerang.png',
-        PLASMA:      'sprites/proj_plasma.png',
-        FLAME_TOWER: 'sprites/proj_flametower.png',
-        LASER:       'sprites/proj_laser.png',
-        BALLISTA:    'sprites/proj_ballista.png',
+        PLASMA:      null, // set path when sprite is ready
+        FLAME_TOWER: null,
+        LASER:       null,
+        BALLISTA:    null,
     },
 
     // ==============================================
@@ -65,14 +65,14 @@ const CONFIG = {
     // Папка: sprites/  |  Размер: 32x32
     // ==============================================
     MAGIC_SPRITES: {
-        WIND:      'sprites/magic_wind.png',
-        FREEZE:    'sprites/magic_freeze.png',
-        LIGHTNING: 'sprites/magic_lightning.png',
-        HEAL:      'sprites/magic_heal.png',
-        METEOR:    'sprites/magic_meteor.png',
-        SHIELD:    'sprites/magic_shield.png',
-        LAVA:      'sprites/magic_lava.png',
-        TORNADO:   'sprites/magic_tornado.png',
+        WIND:      null, // set path when sprite is ready
+        FREEZE:    null,
+        LIGHTNING: null,
+        HEAL:      null,
+        METEOR:    null,
+        SHIELD:    null,
+        LAVA:      null,
+        TORNADO:   null,
     },
 
     // Старые картинки мобов (JPG фолбек)

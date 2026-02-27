@@ -32,9 +32,9 @@ class GameScene extends Phaser.Scene {
         }
         var images = CONFIG.IMAGES;
         for (var imgKey in images) { if (images[imgKey]) this.load.image('enemy_' + imgKey, images[imgKey]); }
-        if (CONFIG.WEAPON_SPRITES) { for (var wk in CONFIG.WEAPON_SPRITES) this.load.image('weapon_' + wk, CONFIG.WEAPON_SPRITES[wk]); }
-        if (CONFIG.PROJECTILE_SPRITES) { for (var pk in CONFIG.PROJECTILE_SPRITES) this.load.image('proj_' + pk, CONFIG.PROJECTILE_SPRITES[pk]); }
-        if (CONFIG.MAGIC_SPRITES) { for (var mk in CONFIG.MAGIC_SPRITES) this.load.image('magic_' + mk, CONFIG.MAGIC_SPRITES[mk]); }
+        if (CONFIG.WEAPON_SPRITES) { for (var wk in CONFIG.WEAPON_SPRITES) { if (CONFIG.WEAPON_SPRITES[wk]) this.load.image('weapon_' + wk, CONFIG.WEAPON_SPRITES[wk]); } }
+        if (CONFIG.PROJECTILE_SPRITES) { for (var pk in CONFIG.PROJECTILE_SPRITES) { if (CONFIG.PROJECTILE_SPRITES[pk]) this.load.image('proj_' + pk, CONFIG.PROJECTILE_SPRITES[pk]); } }
+        if (CONFIG.MAGIC_SPRITES) { for (var mk in CONFIG.MAGIC_SPRITES) { if (CONFIG.MAGIC_SPRITES[mk]) this.load.image('magic_' + mk, CONFIG.MAGIC_SPRITES[mk]); } }
         if (CONFIG.VFX_SPRITES) { for (var vk in CONFIG.VFX_SPRITES) { var v = CONFIG.VFX_SPRITES[vk]; this.load.spritesheet('vfx_'+vk, v.file, {frameWidth:v.fw, frameHeight:v.fh}); } }
     }
 
@@ -76,6 +76,11 @@ class GameScene extends Phaser.Scene {
         // Ammo perk stacks (from roguelike perk picks)
         this.ammoEffects = { electric: 0, fire: 0, ice: 0, multi: 0 };
         this.castleShieldActive = false; this.castleShieldReduction = 0; this.chainShotPairs = [];
+        // All roguelike perk bonuses — must be reset each run
+        this.flameSpreadBonus = 0; this.windPushBonus = 0; this.freezeExtendBonus = 0;
+        this.healPowerBonus = 0; this.extraElectricChain = 0; this.magicDamageMult = 1;
+        this.magicCdMult = 1; this.magicDurationMult = 1;
+        this.boomerangTriple = 0; this.crossbowBarrage = 0; this.spreadShotBonus = 0;
         this.damageBuff = 1 + talentEffects.damageBonus; this.damageBuffEndTime = 0;
         this.reviveUsed = false; this.gemAdUsed = 0;
         // Loadout-based weapon/magic init
@@ -611,7 +616,7 @@ class GameScene extends Phaser.Scene {
         var st = this.weaponStates[this.currentWeapon], ct = this.time.now;
         if (ct - this.lastFireTime < st.fireRate) return; this.lastFireTime = ct;
         var extraFromAmmo = (this.ammoEffects && this.ammoEffects.multi) ? this.ammoEffects.multi : 0;
-        var tp = 1 + extraFromAmmo, sa = 10;
+        var tp = 1 + extraFromAmmo, sa = 5;
         var ba = Phaser.Math.Angle.Between(this.crossbowX,this.crossbowY,tx,ty), bd = st.damage*this.damageBuff;
         var weapon = CONFIG.WEAPONS[this.currentWeapon];
 
@@ -640,7 +645,7 @@ class GameScene extends Phaser.Scene {
             var totalExtra = extraFromAmmo + extraBoomerang + extraCrossbow;
             var tp2 = 1 + totalExtra;
             // Wider spread for crossbow barrage
-            var spreadAngle = (extraCrossbow > 0) ? 20 : sa;
+            var spreadAngle = (extraCrossbow > 0) ? 12 : sa;
             for (var i=0;i<tp2;i++) {
                 var a = ba; if(tp2>1) { var sr=Phaser.Math.DegToRad(spreadAngle), o=(i-(tp2-1)/2)*sr; a=ba+o; }
                 this.projectiles.push(new Projectile(this, this.crossbowX,this.crossbowY, this.crossbowX+Math.cos(a)*800,this.crossbowY+Math.sin(a)*800, bd,st.speed,this.currentWeapon,st));
@@ -731,6 +736,18 @@ class GameScene extends Phaser.Scene {
         this.waveText.setText(levelName + ' - Wave ' + this.currentWave + '/' + waveSuffix);
         this.showAdBonusButton(false);
 
+        // Unlock next level when reaching wave 20
+        if (this.currentWave === 20) {
+            var prog = window.gameProgress || {};
+            var nextLevel = this.currentLevel + 1;
+            if (CONFIG.LEVELS[nextLevel] && (!prog.unlockedLevels || prog.unlockedLevels.indexOf(nextLevel) === -1)) {
+                if (!prog.unlockedLevels) prog.unlockedLevels = [1];
+                prog.unlockedLevels.push(nextLevel);
+                window.gameProgress = prog;
+                saveGameProgress();
+                this.showMessage('🔓 Открыт уровень ' + nextLevel + '!', '#f0c866');
+            }
+        }
         // Check for events every 5 waves (starting wave 5)
         if (this.currentWave >= 5 && this.currentWave % 5 === 0) {
             this.checkForEvent();
@@ -1164,18 +1181,19 @@ class GameScene extends Phaser.Scene {
 
     isPerkRelevant(p) {
         var t = p.type;
-        // Weapon-specific perks — only show if weapon is in current loadout
-        if (t === 'plasmaExtraBounce' && this.unlockedWeapons.indexOf('PLASMA') === -1 && this.unlockedWeapons.indexOf('BALLISTA') === -1) return false;
-        if (t === 'splashRadius'      && this.unlockedWeapons.indexOf('CANNON') === -1) return false;
-        if (t === 'boomerangRange'    && this.unlockedWeapons.indexOf('BOOMERANG') === -1) return false;
-        if (t === 'ballistaDamage'    && this.unlockedWeapons.indexOf('BALLISTA') === -1) return false;
-        if (t === 'crossbowCrit'      && this.unlockedWeapons.indexOf('CROSSBOW') === -1) return false;
-        if (t === 'flameSpread'       && this.unlockedWeapons.indexOf('FLAME_TOWER') === -1) return false;
-        if (t === 'cannonPush'        && this.unlockedWeapons.indexOf('CANNON') === -1) return false;
-        if (t === 'laserSpeed'        && this.unlockedWeapons.indexOf('LASER') === -1) return false;
-        if (t === 'chainShot'         && this.unlockedWeapons.indexOf('CANNON') === -1) return false;
-        if (t === 'boomerangTriple'   && this.unlockedWeapons.indexOf('BOOMERANG') === -1) return false;
-        if (t === 'crossbowBarrage'   && this.unlockedWeapons.indexOf('CROSSBOW') === -1) return false;
+        // Weapon-specific perks — only show for the currently active weapon
+        var cw = this.currentWeapon;
+        if (t === 'plasmaExtraBounce' && cw !== 'PLASMA' && cw !== 'BALLISTA') return false;
+        if (t === 'splashRadius'      && cw !== 'CANNON') return false;
+        if (t === 'boomerangRange'    && cw !== 'BOOMERANG') return false;
+        if (t === 'ballistaDamage'    && cw !== 'BALLISTA') return false;
+        if (t === 'crossbowCrit'      && cw !== 'CROSSBOW') return false;
+        if (t === 'flameSpread'       && cw !== 'FLAME_TOWER') return false;
+        if (t === 'cannonPush'        && cw !== 'CANNON') return false;
+        if (t === 'laserSpeed'        && cw !== 'LASER') return false;
+        if (t === 'chainShot'         && cw !== 'CANNON') return false;
+        if (t === 'boomerangTriple'   && cw !== 'BOOMERANG') return false;
+        if (t === 'crossbowBarrage'   && cw !== 'CROSSBOW') return false;
         // Magic-specific perks — only if magic type is in active loadout
         if (t === 'windPush'          && this.activeMagic.indexOf('WIND') === -1) return false;
         if (t === 'freezeExtend'      && this.activeMagic.indexOf('FREEZE') === -1) return false;

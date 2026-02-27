@@ -577,174 +577,196 @@ class MenuScene extends Phaser.Scene {
             this.container.add(startBtn);
         }
 
-        // Back button
+        // Back to level select button
         var backBg = this.add.graphics();
         backBg.fillStyle(0x4a1a0e, 0.7); backBg.fillRect(20, H-40, 80, 28);
         backBg.lineStyle(1, 0x8a3a1a, 0.5); backBg.strokeRect(20, H-40, 80, 28);
         this.container.add(backBg);
         var backBtn = this.add.rectangle(60, H-26, 80, 28, 0x000000, 0).setInteractive({useHandCursor: true});
-        backBtn.on('pointerdown', function() {
-            self.ldWeapons = null;
-            self.ldMagic = null;
-            self.showLevelSelect();
-        });
+        backBtn.on('pointerdown', function() { self.ldWeapons = null; self.ldMagic = null; self.showLevelSelect(); });
         this.container.add(backBtn);
         this.container.add(this.add.text(60, H-26, 'НАЗАД', {fontSize: '7px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5));
+
+        // Main menu button
+        var menuBg = this.add.graphics();
+        menuBg.fillStyle(0x1a1a3a, 0.7); menuBg.fillRect(W - 100, H-40, 80, 28);
+        menuBg.lineStyle(1, 0x4a4a8a, 0.5); menuBg.strokeRect(W - 100, H-40, 80, 28);
+        this.container.add(menuBg);
+        var menuBtn = this.add.rectangle(W - 60, H-26, 80, 28, 0x000000, 0).setInteractive({useHandCursor: true});
+        menuBtn.on('pointerdown', function() { self.ldWeapons = null; self.ldMagic = null; self.showMainMenu(); });
+        this.container.add(menuBtn);
+        this.container.add(this.add.text(W - 60, H-26, 'МЕНЮ', {fontSize: '7px', color: '#8888ee', fontFamily: FONT}).setOrigin(0.5));
     }
 
     openWeaponSelector(slotIdx) {
         var W = CONFIG.GAME_WIDTH, H = CONFIG.GAME_HEIGHT, self = this;
         var prog = this.prog;
-        var ownedWeapons = prog.ownedWeapons || ['CROSSBOW'];
+        if (!prog.ownedWeapons) prog.ownedWeapons = ['CROSSBOW'];
+        var gems = prog.gems || 0;
+        var allWeapons = Object.keys(CONFIG.WEAPONS);
         var elements = [];
 
-        var ov = this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.85).setDepth(200);
+        var ov = this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.88).setDepth(200);
         elements.push(ov);
-
-        var title = this.add.text(W/2, 65, '⚔️ ВЫБЕРИТЕ ОРУЖИЕ (слот ' + (slotIdx + 1) + ')', {
+        elements.push(this.add.text(W/2, 55, '⚔️ ОРУЖИЕ — слот ' + (slotIdx + 1), {
             fontSize: '9px', color: '#ee9944', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 3
-        }).setOrigin(0.5).setDepth(201);
-        elements.push(title);
+        }).setOrigin(0.5).setDepth(201));
+        var gemsLabel = this.add.text(W/2, 72, '💎 ' + gems, {fontSize: '7px', color: '#66aaee', fontFamily: FONT}).setOrigin(0.5).setDepth(201);
+        elements.push(gemsLabel);
 
-        var cols = 3, btnW = 200, btnH = 44, gap = 8;
+        var cols = 2, btnW = 220, btnH = 48, gap = 8;
         var totalW = cols * btnW + (cols - 1) * gap;
-        var sx = W/2 - totalW/2;
-        var sy = 100;
+        var sx = W/2 - totalW/2, sy = 88;
 
-        for (var i = 0; i < ownedWeapons.length; i++) {
-            var wk = ownedWeapons[i];
-            var w = CONFIG.WEAPONS[wk];
-            if (!w) continue;
+        for (var i = 0; i < allWeapons.length; i++) {
+            var wk = allWeapons[i], w = CONFIG.WEAPONS[wk];
             var col = i % cols, row = Math.floor(i / cols);
-            var bx = sx + col * (btnW + gap);
-            var by = sy + row * (btnH + gap);
+            var bx = sx + col * (btnW + gap), by = sy + row * (btnH + gap);
+            var owned = prog.ownedWeapons.indexOf(wk) !== -1;
             var alreadyUsed = false;
             for (var ci = 0; ci < self.ldWeapons.length; ci++) {
                 if (self.ldWeapons[ci] === wk && ci !== slotIdx) { alreadyUsed = true; break; }
             }
-            var isCurrentlySelected = self.ldWeapons[slotIdx] === wk;
+            var selected = self.ldWeapons[slotIdx] === wk;
+            var canAfford = owned || (w.gemCost > 0 && gems >= w.gemCost);
 
             var bbg = this.add.graphics().setDepth(201);
-            if (isCurrentlySelected) {
-                bbg.fillStyle(0x1a3a1a, 0.9); bbg.fillRect(bx, by, btnW, btnH);
-                bbg.lineStyle(2, 0xf0c866, 0.9); bbg.strokeRect(bx, by, btnW, btnH);
-            } else if (alreadyUsed) {
-                bbg.fillStyle(0x0a0a0a, 0.7); bbg.fillRect(bx, by, btnW, btnH);
-                bbg.lineStyle(1, 0x333333, 0.4); bbg.strokeRect(bx, by, btnW, btnH);
-            } else {
-                bbg.fillStyle(0x2a1a0e, 0.85); bbg.fillRect(bx, by, btnW, btnH);
-                bbg.lineStyle(1, 0x8a6a2a, 0.6); bbg.strokeRect(bx, by, btnW, btnH);
-            }
+            var bdrColor = selected ? 0xf0c866 : (owned ? 0x6a4a2a : (canAfford ? 0x2255aa : 0x333333));
+            var fillColor = selected ? 0x1a3a1a : (owned ? 0x2a1a0e : (canAfford ? 0x0e1a2a : 0x0a0a0a));
+            bbg.fillStyle(fillColor, 0.9); bbg.fillRect(bx, by, btnW, btnH);
+            bbg.lineStyle(owned ? 2 : 1, bdrColor, owned ? 0.9 : 0.6); bbg.strokeRect(bx, by, btnW, btnH);
             elements.push(bbg);
 
-            var bLabel = isCurrentlySelected ? ('✓ ' + w.icon + ' ' + w.name) : (w.icon + ' ' + w.name);
-            var bTxt = this.add.text(bx + btnW/2, by + btnH/2, bLabel, {
-                fontSize: '7px', color: alreadyUsed ? '#444444' : (isCurrentlySelected ? '#f0c866' : '#d4c4a4'), fontFamily: FONT
-            }).setOrigin(0.5).setDepth(202);
-            elements.push(bTxt);
+            var nameColor = selected ? '#f0c866' : (owned ? '#d4c4a4' : (canAfford ? '#88aaff' : '#555555'));
+            elements.push(this.add.text(bx + 10, by + 8, (selected ? '✓ ' : '') + w.icon + ' ' + w.name, {
+                fontSize: '8px', color: nameColor, fontFamily: FONT
+            }).setDepth(202));
 
-            if (!alreadyUsed) {
+            if (!owned) {
+                var costStr = w.gemCost > 0 ? ('💎 ' + w.gemCost) : 'БЕСПЛАТНО';
+                var costColor = canAfford ? '#66aaee' : '#884444';
+                elements.push(this.add.text(bx + 10, by + 28, canAfford ? ('Купить: ' + costStr) : ('Нужно: ' + costStr), {
+                    fontSize: '6px', color: costColor, fontFamily: FONT
+                }).setDepth(202));
+            } else if (alreadyUsed) {
+                elements.push(this.add.text(bx + 10, by + 28, 'Уже в другом слоте', {fontSize: '6px', color: '#666644', fontFamily: FONT}).setDepth(202));
+            }
+
+            if (!alreadyUsed && (owned || canAfford)) {
                 var btn = this.add.rectangle(bx + btnW/2, by + btnH/2, btnW, btnH, 0x000000, 0)
                     .setInteractive({useHandCursor: true}).setDepth(203);
                 elements.push(btn);
-                (function(weapon) {
+                (function(weapon, isOwned, cost) {
                     btn.on('pointerdown', function() {
+                        if (!isOwned) {
+                            if ((prog.gems || 0) < cost) return;
+                            prog.gems -= cost;
+                            if (!prog.ownedWeapons) prog.ownedWeapons = ['CROSSBOW'];
+                            prog.ownedWeapons.push(weapon);
+                            window.gameProgress = prog;
+                            saveGameProgress();
+                        }
                         for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy();
                         self.ldWeapons[slotIdx] = weapon;
                         self.showLoadoutPicker(self.ldLevelNum);
                     });
-                })(wk);
+                })(wk, owned, w.gemCost || 0);
             }
         }
 
-        // Cancel button
+        // Cancel
         var closeBg = this.add.graphics().setDepth(201);
-        closeBg.fillStyle(0x4a1a0e, 0.8); closeBg.fillRect(W/2 - 50, H - 55, 100, 28);
-        closeBg.lineStyle(1, 0x8a3a1a, 0.5); closeBg.strokeRect(W/2 - 50, H - 55, 100, 28);
+        closeBg.fillStyle(0x4a1a0e, 0.8); closeBg.fillRect(W/2 - 50, H - 50, 100, 28);
+        closeBg.lineStyle(1, 0x8a3a1a, 0.5); closeBg.strokeRect(W/2 - 50, H - 50, 100, 28);
         elements.push(closeBg);
-        var closeBtn = this.add.rectangle(W/2, H - 41, 100, 28, 0x000000, 0).setInteractive({useHandCursor: true}).setDepth(203);
+        var closeBtn = this.add.rectangle(W/2, H - 36, 100, 28, 0x000000, 0).setInteractive({useHandCursor: true}).setDepth(203);
         elements.push(closeBtn);
-        elements.push(this.add.text(W/2, H - 41, 'ОТМЕНА', {fontSize: '6px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5).setDepth(202));
-        closeBtn.on('pointerdown', function() {
-            for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy();
-        });
+        elements.push(this.add.text(W/2, H - 36, 'ОТМЕНА', {fontSize: '6px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5).setDepth(202));
+        closeBtn.on('pointerdown', function() { for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy(); });
     }
 
     openMagicSelector(slotIdx) {
         var W = CONFIG.GAME_WIDTH, H = CONFIG.GAME_HEIGHT, self = this;
         var prog = this.prog;
+        if (!prog.ownedMagic) prog.ownedMagic = ['WIND'];
+        var gems = prog.gems || 0;
+        var allMagic = Object.keys(CONFIG.MAGIC);
         var elements = [];
-        var magicKeys = prog.ownedMagic && prog.ownedMagic.length > 0 ? prog.ownedMagic : ['WIND', 'FREEZE', 'LIGHTNING', 'HEAL'];
 
-        var ov = this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.85).setDepth(200);
+        var ov = this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.88).setDepth(200);
         elements.push(ov);
-
-        var title = this.add.text(W/2, 100, '✨ ВЫБЕРИТЕ МАГИЮ (слот ' + (slotIdx + 1) + ')', {
+        elements.push(this.add.text(W/2, 55, '✨ МАГИЯ — слот ' + (slotIdx + 1), {
             fontSize: '9px', color: '#8888ee', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 3
-        }).setOrigin(0.5).setDepth(201);
-        elements.push(title);
+        }).setOrigin(0.5).setDepth(201));
+        var gemsLabel2 = this.add.text(W/2, 72, '💎 ' + gems, {fontSize: '7px', color: '#66aaee', fontFamily: FONT}).setOrigin(0.5).setDepth(201);
+        elements.push(gemsLabel2);
 
-        var cols = 2, btnW = 220, btnH = 60, gap = 12;
+        var cols = 2, btnW = 220, btnH = 58, gap = 8;
         var totalW = cols * btnW + (cols - 1) * gap;
-        var sx = W/2 - totalW/2;
-        var sy = 140;
+        var sx = W/2 - totalW/2, sy = 86;
 
-        for (var i = 0; i < magicKeys.length; i++) {
-            var mk = magicKeys[i];
-            var mg = CONFIG.MAGIC[mk];
+        for (var i = 0; i < allMagic.length; i++) {
+            var mk = allMagic[i], mg = CONFIG.MAGIC[mk];
             var col = i % cols, row = Math.floor(i / cols);
-            var bx = sx + col * (btnW + gap);
-            var by = sy + row * (btnH + gap);
-            var isCurrentlySelected = self.ldMagic[slotIdx] === mk;
+            var bx = sx + col * (btnW + gap), by = sy + row * (btnH + gap);
+            var owned = prog.ownedMagic.indexOf(mk) !== -1 || (mg.gemCost === 0);
+            var selected = self.ldMagic[slotIdx] === mk;
+            var canAfford = owned || (mg.gemCost > 0 && gems >= mg.gemCost);
 
             var mbg = this.add.graphics().setDepth(201);
-            if (isCurrentlySelected) {
-                mbg.fillStyle(0x1a1a3a, 0.9); mbg.fillRect(bx, by, btnW, btnH);
-                mbg.lineStyle(2, 0x8888ee, 0.9); mbg.strokeRect(bx, by, btnW, btnH);
-            } else {
-                mbg.fillStyle(0x0e1020, 0.85); mbg.fillRect(bx, by, btnW, btnH);
-                mbg.lineStyle(1, 0x4444aa, 0.5); mbg.strokeRect(bx, by, btnW, btnH);
-            }
+            var mFill = selected ? 0x1a1a3a : (owned ? 0x0e1020 : (canAfford ? 0x0a0e1a : 0x080808));
+            var mBdr = selected ? 0x8888ee : (owned ? 0x4444aa : (canAfford ? 0x2244aa : 0x222222));
+            mbg.fillStyle(mFill, 0.9); mbg.fillRect(bx, by, btnW, btnH);
+            mbg.lineStyle(owned ? 2 : 1, mBdr, owned ? 0.9 : 0.6); mbg.strokeRect(bx, by, btnW, btnH);
             elements.push(mbg);
 
-            var iconTxt = this.add.text(bx + 28, by + btnH/2, mg.icon, {fontSize: '20px'}).setOrigin(0.5).setDepth(202);
-            elements.push(iconTxt);
-            var nameTxt = this.add.text(bx + 60, by + 14, (isCurrentlySelected ? '✓ ' : '') + mg.name, {
-                fontSize: '8px', color: isCurrentlySelected ? '#f0c866' : '#c8c8ff', fontFamily: FONT
-            }).setDepth(202);
-            elements.push(nameTxt);
-            var costTxt = this.add.text(bx + 60, by + 32, 'Мана: ' + mg.manaCost + ' | КД: ' + (mg.cooldown/1000).toFixed(0) + 'с', {
-                fontSize: '6px', color: '#888888', fontFamily: FONT
-            }).setDepth(202);
-            elements.push(costTxt);
-            var keyTxt = this.add.text(bx + 60, by + 46, 'Клавиша: ' + mg.hotkey, {
-                fontSize: '6px', color: '#666666', fontFamily: FONT
-            }).setDepth(202);
-            elements.push(keyTxt);
+            elements.push(this.add.text(bx + 28, by + btnH/2, mg.icon, {fontSize: '18px'}).setOrigin(0.5).setDepth(202));
+            var nameColor2 = selected ? '#f0c866' : (owned ? '#c8c8ff' : (canAfford ? '#88aaff' : '#555555'));
+            elements.push(this.add.text(bx + 55, by + 10, (selected ? '✓ ' : '') + mg.name, {
+                fontSize: '8px', color: nameColor2, fontFamily: FONT
+            }).setDepth(202));
+            elements.push(this.add.text(bx + 55, by + 26, 'Мана: ' + mg.manaCost + '  КД: ' + (mg.cooldown/1000).toFixed(0) + 'с', {
+                fontSize: '6px', color: '#777788', fontFamily: FONT
+            }).setDepth(202));
 
-            var mbtn = this.add.rectangle(bx + btnW/2, by + btnH/2, btnW, btnH, 0x000000, 0)
-                .setInteractive({useHandCursor: true}).setDepth(203);
-            elements.push(mbtn);
-            (function(magic) {
-                mbtn.on('pointerdown', function() {
-                    for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy();
-                    self.ldMagic[slotIdx] = magic;
-                    self.showLoadoutPicker(self.ldLevelNum);
-                });
-            })(mk);
+            if (!owned) {
+                var mCostStr = mg.gemCost > 0 ? ('💎 ' + mg.gemCost) : 'БЕСПЛАТНО';
+                elements.push(this.add.text(bx + 55, by + 40, canAfford ? ('Купить: ' + mCostStr) : ('Нужно: ' + mCostStr), {
+                    fontSize: '6px', color: canAfford ? '#66aaee' : '#884444', fontFamily: FONT
+                }).setDepth(202));
+            }
+
+            if (canAfford) {
+                var mbtn = this.add.rectangle(bx + btnW/2, by + btnH/2, btnW, btnH, 0x000000, 0)
+                    .setInteractive({useHandCursor: true}).setDepth(203);
+                elements.push(mbtn);
+                (function(magic, isOwned, cost) {
+                    mbtn.on('pointerdown', function() {
+                        if (!isOwned) {
+                            if ((prog.gems || 0) < cost) return;
+                            prog.gems -= cost;
+                            if (!prog.ownedMagic) prog.ownedMagic = ['WIND'];
+                            prog.ownedMagic.push(magic);
+                            window.gameProgress = prog;
+                            saveGameProgress();
+                        }
+                        for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy();
+                        self.ldMagic[slotIdx] = magic;
+                        self.showLoadoutPicker(self.ldLevelNum);
+                    });
+                })(mk, owned, mg.gemCost || 0);
+            }
         }
 
-        // Cancel button
+        // Cancel
         var closeBg2 = this.add.graphics().setDepth(201);
-        closeBg2.fillStyle(0x4a1a0e, 0.8); closeBg2.fillRect(W/2 - 50, H - 55, 100, 28);
-        closeBg2.lineStyle(1, 0x8a3a1a, 0.5); closeBg2.strokeRect(W/2 - 50, H - 55, 100, 28);
+        closeBg2.fillStyle(0x4a1a0e, 0.8); closeBg2.fillRect(W/2 - 50, H - 50, 100, 28);
+        closeBg2.lineStyle(1, 0x8a3a1a, 0.5); closeBg2.strokeRect(W/2 - 50, H - 50, 100, 28);
         elements.push(closeBg2);
-        var closeBtn2 = this.add.rectangle(W/2, H - 41, 100, 28, 0x000000, 0).setInteractive({useHandCursor: true}).setDepth(203);
+        var closeBtn2 = this.add.rectangle(W/2, H - 36, 100, 28, 0x000000, 0).setInteractive({useHandCursor: true}).setDepth(203);
         elements.push(closeBtn2);
-        elements.push(this.add.text(W/2, H - 41, 'ОТМЕНА', {fontSize: '6px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5).setDepth(202));
-        closeBtn2.on('pointerdown', function() {
-            for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy();
-        });
+        elements.push(this.add.text(W/2, H - 36, 'ОТМЕНА', {fontSize: '6px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5).setDepth(202));
+        closeBtn2.on('pointerdown', function() { for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy(); });
     }
 
     showArtifacts() {
