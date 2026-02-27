@@ -14,18 +14,22 @@ const CONFIG = {
     // ==============================================
     SPRITES: {
         GOBLIN:       { file: 'sprites/goblin.png',    fw: 64,  fh: 64,  frames: 4, fps: 8 },
-        ORC:          { file: 'sprites/Orc.png',       fw: 64,  fh: 64,  frames: 4, fps: 6 },
+        ORC:          { file: 'sprites/orc.png',       fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL:        { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL_MEDIUM: { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL_SMALL:  { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
-        DASHER:       { file: 'sprites/Dasher.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
-        // No files yet — use emoji fallback: ZIGZAG, SHOOTER, HEALER, BOSS, MEGA_BOSS
+        ZIGZAG:       { file: 'sprites/zigzag.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
+        DASHER:       { file: 'sprites/dasher.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
+        SHOOTER:      { file: 'sprites/witchмне .png',   fw: 64,  fh: 64,  frames: 4, fps: 8 },
+        HEALER:       { file: 'sprites/healer.png',    fw: 64,  fh: 64,  frames: 4, fps: 6 },
+        BOSS:         { file: 'sprites/boss.png',      fw: 128, fh: 128, frames: 4, fps: 6 },
+        MEGA_BOSS:    { file: 'sprites/megaboss.png',  fw: 128, fh: 128, frames: 4, fps: 6 },
     },
 
     // Кастомное окружение (обычные картинки, не спрайтшиты)
     ENV: {
-        BACKGROUND: 'sprites/Background.png',
-        CASTLE:     null, // 'sprites/castle.png' — добавь файл чтобы включить
+        BACKGROUND: 'sprites/background.png',
+        CASTLE:     'sprites/castle.png',
     },
 
     // ==============================================
@@ -33,13 +37,13 @@ const CONFIG = {
     // Папка: sprites/  |  Размер: ~64x64, направление ВПРАВО
     // ==============================================
     WEAPON_SPRITES: {
-        CROSSBOW:    'sprites/Weapon_crossbow.png',
-        CANNON:      'sprites/Weapon_cannon.png',
-        BOOMERANG:   null, // 'sprites/weapon_boomerang.png'
-        PLASMA:      null,
-        FLAME_TOWER: null,
-        LASER:       null,
-        BALLISTA:    null,
+        CROSSBOW:    'sprites/weapon_crossbow.png',
+        CANNON:      'sprites/weapon_cannon.png',
+        BOOMERANG:   'sprites/weapon_boomerang.png',
+        PLASMA:      'sprites/weapon_plasma.png',
+        FLAME_TOWER: 'sprites/weapon_flametower.png',
+        LASER:       'sprites/weapon_laser.png',
+        BALLISTA:    'sprites/weapon_ballista.png',
     },
 
     // ==============================================
@@ -71,24 +75,23 @@ const CONFIG = {
         TORNADO:   null,
     },
 
-    // Статичные изображения мобов (фолбек, если нет спрайтшита)
+    // Старые картинки мобов (JPG фолбек)
     IMAGES: {
-        GOBLIN:       null, // handled by SPRITES spritesheet
-        ORC:          null, // handled by SPRITES spritesheet
-        TROLL:        null, // handled by SPRITES spritesheet
-        TROLL_MEDIUM: null,
-        TROLL_SMALL:  null,
-        DASHER:       null, // handled by SPRITES spritesheet
-        BOSS:         'sprites/Demon.png',
-        HEALER:       'sprites/Witch.png',
-        NECROMANCER:  'sprites/Witch.png',
-        SHOOTER:      null, // emoji fallback
-        ZIGZAG:       null, // emoji fallback
-        MEGA_BOSS:    null, // emoji fallback
+        GOBLIN: 'images/goblin.jpg',
+        ORC: 'images/orc.jpg',
+        TROLL: 'images/troll.jpg',
+        TROLL_MEDIUM: 'images/troll.jpg',
+        TROLL_SMALL: 'images/troll.jpg',
+        BOSS: 'images/boss.jpg',
+        SHOOTER: 'images/shooter.jpg',
+        ZIGZAG: 'images/zigzag.jpg',
+        DASHER: 'images/dasher.jpg',
+        HEALER: 'images/sniper.jpg',
+        MEGA_BOSS: 'images/megaboss.jpg',
     },
 
     BACKGROUND: {
-        image: null, // background handled by ENV.BACKGROUND
+        image: 'images/background.jpg',
         skyColor1: 0x87ceeb,
         skyColor2: 0x4682b4,
         groundColor: 0x8b4513,
@@ -417,10 +420,10 @@ const CONFIG = {
         FREEZE:    { name: 'Заморозка',    duration: 3500,               manaCost: 45, cooldown: 30000,  color: 0x00ffff, icon: '❄️', hotkey: 'W', gemCost: 4 },
         LIGHTNING: { name: 'Молния',       damage: 120, targets: 6,       manaCost: 75, cooldown: 60000, color: 0xffff00, icon: '⚡', hotkey: 'E', gemCost: 8 },
         HEAL:      { name: 'Исцеление',    healAmount: 50,                manaCost: 75, cooldown: 30000, color: 0x00ff00, icon: '💚', hotkey: 'R', gemCost: 5 },
-        METEOR:    { name: 'Метеорит',     damage: 80, meteorCount: 5, radius: 80, manaCost: 60, cooldown: 60000, color: 0xff4400, icon: '☄️', hotkey: 'T', gemCost: 8 },
-        SHIELD:    { name: 'Щит замка',    duration: 5000, reduction: 0.6, manaCost: 60, cooldown: 20000, color: 0x4488ff, icon: '🛡️', hotkey: 'Y', gemCost: 6 },
-        LAVA:      { name: 'Лавовая зона', damage: 15, duration: 5000, radius: 70, manaCost: 50, cooldown: 30000, color: 0xff6600, icon: '🌋', hotkey: 'U', gemCost: 10 },
-        TORNADO:   { name: 'Торнадо',      damage: 20, pullForce: 80, duration: 3000, targets: 8, manaCost: 70, cooldown: 30000, color: 0xccaaff, icon: '🌪️', hotkey: 'I', gemCost: 7 },
+        METEOR:    { name: 'Метеорит',     damage: 80, meteorCount: 5, radius: 80, manaCost: 60, cooldown: 15000, color: 0xff4400, icon: '☄️', hotkey: 'T', gemCost: 8 },
+        SHIELD:    { name: 'Щит замка',    duration: 8000, reduction: 0.6, manaCost: 40, cooldown: 20000, color: 0x4488ff, icon: '🛡️', hotkey: 'Y', gemCost: 6 },
+        LAVA:      { name: 'Лавовая зона', damage: 15, duration: 6000, radius: 70, manaCost: 50, cooldown: 18000, color: 0xff6600, icon: '🌋', hotkey: 'U', gemCost: 10 },
+        TORNADO:   { name: 'Торнадо',      damage: 20, pullForce: 80, duration: 4000, targets: 8, manaCost: 45, cooldown: 14000, color: 0xccaaff, icon: '🌪️', hotkey: 'I', gemCost: 7 },
     },
 
     // ==============================================
@@ -434,50 +437,50 @@ const CONFIG = {
 
     // Rarity weights: COMMON=10, RARE=5, EPIC=2, LEGENDARY=1
     ROGUE_PERKS: [
-        { id: 'ALL_DAMAGE',     rarity: 'COMMON',    name: 'Острые лезвия',      icon: '⚔️', desc: '+5% урон всех оружий',        type: 'allDamage',        value: 0.05 },
-        { id: 'FIRE_RATE',      rarity: 'COMMON',    name: 'Быстрые руки',        icon: '💨', desc: '+5% скорострельность всех',   type: 'allFireRate',       value: 0.05 },
-        { id: 'CRIT_ALL',       rarity: 'COMMON',    name: 'Меткий взгляд',       icon: '🎯', desc: '+2% шанс крита',               type: 'critAll',           value: 2 },
-        { id: 'MANA_MAX',       rarity: 'COMMON',    name: 'Резервуар маны',       icon: '💧', desc: '+10 макс. мана',               type: 'manaMax',           value: 10 },
-        { id: 'MANA_REGEN',     rarity: 'COMMON',    name: 'Медитация',            icon: '🔮', desc: '+1 рег. маны/сек',             type: 'manaRegen',         value: 1 },
-        { id: 'MAGIC_POWER',    rarity: 'RARE',      name: 'Аркан Силы',           icon: '✨', desc: '+10% урон магии',              type: 'magicDamage',       value: 0.10 },
-        { id: 'MAGIC_CD',       rarity: 'RARE',      name: 'Быстрые заклинания',  icon: '⏱️', desc: '-5% кулдаун магии',           type: 'magicCooldown',     value: 0.5 },
-        { id: 'CASTLE_HP',      rarity: 'COMMON',    name: 'Укрепление стен',      icon: '🏰', desc: '+20 HP замка',                type: 'castleHp',          value: 20 },
-        { id: 'CASTLE_REGEN',   rarity: 'RARE',      name: 'Магический ремонт',    icon: '💚', desc: '+1 рег. HP/сек',              type: 'castleRegen',       value: 1 },
-        { id: 'CASTLE_ARMOR',   rarity: 'EPIC',      name: 'Гранитная броня',      icon: '🛡️', desc: '-2% урон по замку',          type: 'castleArmor',       value: 0.2 },
+        { id: 'ALL_DAMAGE',     rarity: 'COMMON',    name: 'Острые лезвия',      icon: '⚔️', desc: '+12% урон всех оружий',        type: 'allDamage',        value: 0.12 },
+        { id: 'FIRE_RATE',      rarity: 'COMMON',    name: 'Быстрые руки',        icon: '💨', desc: '+12% скорострельность всех',   type: 'allFireRate',       value: 0.12 },
+        { id: 'CRIT_ALL',       rarity: 'COMMON',    name: 'Меткий взгляд',       icon: '🎯', desc: '+6% шанс крита',               type: 'critAll',           value: 6 },
+        { id: 'MANA_MAX',       rarity: 'COMMON',    name: 'Резервуар маны',       icon: '💧', desc: '+30 макс. мана',               type: 'manaMax',           value: 30 },
+        { id: 'MANA_REGEN',     rarity: 'COMMON',    name: 'Медитация',            icon: '🔮', desc: '+4 рег. маны/сек',             type: 'manaRegen',         value: 4 },
+        { id: 'MAGIC_POWER',    rarity: 'RARE',      name: 'Аркан Силы',           icon: '✨', desc: '+25% урон магии',              type: 'magicDamage',       value: 0.25 },
+        { id: 'MAGIC_CD',       rarity: 'RARE',      name: 'Быстрые заклинания',  icon: '⏱️', desc: '-15% кулдаун магии',           type: 'magicCooldown',     value: 0.15 },
+        { id: 'CASTLE_HP',      rarity: 'COMMON',    name: 'Укрепление стен',      icon: '🏰', desc: '+60 HP замка',                type: 'castleHp',          value: 60 },
+        { id: 'CASTLE_REGEN',   rarity: 'RARE',      name: 'Магический ремонт',    icon: '💚', desc: '+2 рег. HP/сек',              type: 'castleRegen',       value: 2 },
+        { id: 'CASTLE_ARMOR',   rarity: 'EPIC',      name: 'Гранитная броня',      icon: '🛡️', desc: '-10% урон по замку',          type: 'castleArmor',       value: 0.1 },
         { id: 'PIERCE_SHOT',    rarity: 'RARE',      name: 'Пробойный выстрел',    icon: '🔵', desc: '+1 пробивание всех снарядов',   type: 'pierceAll',         value: 1 },
         { id: 'LONG_RANGE',     rarity: 'COMMON',    name: 'Дальнобойность',        icon: '↗️', desc: '+40% дальность снарядов',       type: 'projRange',         value: 0.4 },
-        { id: 'GOLD_RUSH',      rarity: 'COMMON',    name: 'Золотая лихорадка',    icon: '👑', desc: '+50 золота',                 type: 'gold',              value: 50 },
-        { id: 'LIFESTEAL',      rarity: 'EPIC',      name: 'Кровопийца',           icon: '🧛', desc: '+1% кражи жизней',             type: 'lifesteal',         value: 0.01 },
+        { id: 'GOLD_RUSH',      rarity: 'COMMON',    name: 'Золотая лихорадка',    icon: '👑', desc: '+150 золота',                 type: 'gold',              value: 150 },
+        { id: 'LIFESTEAL',      rarity: 'EPIC',      name: 'Кровопийца',           icon: '🧛', desc: '+2% кражи жизней',             type: 'lifesteal',         value: 0.02 },
         { id: 'ELECTRIC_CHAIN', rarity: 'EPIC',      name: 'Проводник',            icon: '⚡', desc: '+1 цель цепной молнии',        type: 'electricChain',     value: 1 },
         { id: 'WIND_PUSH',      rarity: 'COMMON',    name: 'Буря',                icon: '🌪️', desc: 'Ветер отбрасывает на 80 дальше', type: 'windPush',          value: 80 },
         { id: 'FREEZE_EXTEND',  rarity: 'COMMON',    name: 'Вечная Зима',         icon: '🧊', desc: 'Заморозка длится на 2 сек дольше',type: 'freezeExtend',     value: 2000 },
-        { id: 'HEAL_POWER',     rarity: 'RARE',      name: 'Великий Лекарь',     icon: '💖', desc: 'Исцеление замка +20 HP',          type: 'healPower',         value: 20 },
-        { id: 'HEAVY_HIT',      rarity: 'RARE',      name: 'Тяжёлый удар',         icon: '⚔️', desc: '+5% урон всех оружий',         type: 'allDamage',         value: 0.05 },
-        { id: 'MARKSMAN',       rarity: 'RARE',      name: 'Меткий стрелок',       icon: '🎯', desc: '+2% шанс крита',                type: 'critAll',           value: 2 },
-        { id: 'FORCEFUL_BLOW',  rarity: 'COMMON',    name: 'Мощный удар',          icon: '💫', desc: '+10 отбрасывание всех снарядов',type: 'knockbackAll',      value: 10 },
-        { id: 'SWIFT_STRIKE',   rarity: 'COMMON',    name: 'Молниеносный удар',    icon: '⚡', desc: '+10% скорость снарядов',        type: 'projSpeed',         value: 0.10 },
+        { id: 'HEAL_POWER',     rarity: 'RARE',      name: 'Великий Лекарь',     icon: '💖', desc: 'Исцеление замка +25 HP',          type: 'healPower',         value: 25 },
+        { id: 'HEAVY_HIT',      rarity: 'RARE',      name: 'Тяжёлый удар',         icon: '⚔️', desc: '+15% урон всех оружий',         type: 'allDamage',         value: 0.15 },
+        { id: 'MARKSMAN',       rarity: 'RARE',      name: 'Меткий стрелок',       icon: '🎯', desc: '+8% шанс крита',                type: 'critAll',           value: 8 },
+        { id: 'FORCEFUL_BLOW',  rarity: 'COMMON',    name: 'Мощный удар',          icon: '💫', desc: '+20 отбрасывание всех снарядов',type: 'knockbackAll',      value: 20 },
+        { id: 'SWIFT_STRIKE',   rarity: 'COMMON',    name: 'Молниеносный удар',    icon: '⚡', desc: '+25% скорость снарядов',        type: 'projSpeed',         value: 0.25 },
         // Weapon-specific perks (filtered by loadout)
         { id: 'PLASMA_BOUNCE',  rarity: 'RARE',      name: 'Рикошет',              icon: '🟣', desc: 'Плазма/Баллиста: +2 отскока',   type: 'plasmaExtraBounce', value: 2 },
-        { id: 'CANNON_SPLASH',  rarity: 'RARE',      name: 'Большой взрыв',        icon: '💥', desc: 'Пушка: +15% радиус взрыва',     type: 'splashRadius',      value: 0.15 },
-        { id: 'BOOMERANG_RANGE',rarity: 'RARE',      name: 'Дальний бумеранг',     icon: '🪃', desc: 'Бумеранг: +100 дальность',      type: 'boomerangRange',    value: 100 },
-        { id: 'BALLISTA_DMG',   rarity: 'RARE',      name: 'Сила Баллисты',        icon: '🏹', desc: 'Баллиста: +15% урон',           type: 'ballistaDamage',    value: 0.15 },
-        { id: 'CROSSBOW_CRIT',  rarity: 'RARE',      name: 'Снайпер',              icon: '🎯', desc: 'Арбалет: +5% крит',            type: 'crossbowCrit',      value: 5 },
-        { id: 'FLAME_SPREAD',   rarity: 'RARE',      name: 'Адское Пламя',         icon: '🔥', desc: 'Огнемёт: +1 снаряда',           type: 'flameSpread',       value: 1 },
-        { id: 'CANNON_PUSH',    rarity: 'RARE',      name: 'Разрушитель',          icon: '💥', desc: 'Пушка: +15 отбрасывание',       type: 'cannonPush',        value: 15 },
-        { id: 'LASER_SPEED',    rarity: 'RARE',      name: 'Световой Луч',         icon: '🔴', desc: 'Лазер: +5% скорость',          type: 'laserSpeed',        value: 0.5 },
+        { id: 'CANNON_SPLASH',  rarity: 'RARE',      name: 'Большой взрыв',        icon: '💥', desc: 'Пушка: +30% радиус взрыва',     type: 'splashRadius',      value: 0.3 },
+        { id: 'BOOMERANG_RANGE',rarity: 'RARE',      name: 'Дальний бумеранг',     icon: '🪃', desc: 'Бумеранг: +150 дальность',      type: 'boomerangRange',    value: 150 },
+        { id: 'BALLISTA_DMG',   rarity: 'RARE',      name: 'Сила Баллисты',        icon: '🏹', desc: 'Баллиста: +30% урон',           type: 'ballistaDamage',    value: 0.3 },
+        { id: 'CROSSBOW_CRIT',  rarity: 'RARE',      name: 'Снайпер',              icon: '🎯', desc: 'Арбалет: +10% крит',            type: 'crossbowCrit',      value: 10 },
+        { id: 'FLAME_SPREAD',   rarity: 'RARE',      name: 'Адское Пламя',         icon: '🔥', desc: 'Огнемёт: +3 снаряда',           type: 'flameSpread',       value: 3 },
+        { id: 'CANNON_PUSH',    rarity: 'RARE',      name: 'Разрушитель',          icon: '💥', desc: 'Пушка: +20 отбрасывание',       type: 'cannonPush',        value: 20 },
+        { id: 'LASER_SPEED',    rarity: 'RARE',      name: 'Световой Луч',         icon: '🔴', desc: 'Лазер: +20% скорость',          type: 'laserSpeed',        value: 0.2 },
         // Legendary & Epic weapon-specific
         { id: 'CHAIN_SHOT',     rarity: 'LEGENDARY', name: 'Книппель',             icon: '⛓️', desc: 'Пушка: два ядра на цепи вместо одного', type: 'chainShot', value: 1 },
         { id: 'BOOMERANG_TRIPLE',rarity:'EPIC',       name: 'Тройной бросок',       icon: '🪃', desc: 'Бумеранг: 3 снаряда за один бросок', type: 'boomerangTriple', value: 2 },
-        { id: 'CROSSBOW_BARRAGE',rarity:'EPIC',       name: 'Шквал стрел',          icon: '🏹', desc: 'Арбалет: +3 стрелы веером за выстрел', type: 'crossbowBarrage', value: 3 },
+        { id: 'CROSSBOW_BARRAGE',rarity:'EPIC',       name: 'Шквал стрел',          icon: '🏹', desc: 'Арбалет: +4 стрелы веером за выстрел', type: 'crossbowBarrage', value: 4 },
         // Universal projectile multipliers (super rare)
         { id: 'MULTISHOT',      rarity: 'EPIC',      name: 'Мультивыстрел',        icon: '✦',  desc: '+3 доп. снаряда за выстрел',    type: 'ammoMulti',         value: 3 },
         { id: 'BARRAGE',        rarity: 'LEGENDARY', name: 'Шквальный огонь',      icon: '🌟', desc: '+6 доп. снарядов за выстрел',   type: 'ammoMulti',         value: 6 },
         { id: 'MANA_ON_KILL',   rarity: 'COMMON',    name: 'Пожиратель Душ',      icon: '👻', desc: '+3 маны за каждого убитого врага',type: 'manaOnKill',       value: 3 },
         { id: 'GOLD_INTEREST',  rarity: 'EPIC',      name: 'Ростовщик',           icon: '🏦', desc: '+1% от накопленного золота сразу',type: 'goldInterest',     value: 0.01 },
-        { id: 'ENEMY_SLOW_ALL', rarity: 'LEGENDARY', name: 'Тяжёлые Путы',       icon: '⛓️', desc: 'Все враги изначально замедлены на 5%', type: 'enemySlowAll', value: 0.05 },
+        { id: 'ENEMY_SLOW_ALL', rarity: 'LEGENDARY', name: 'Тяжёлые Путы',       icon: '⛓️', desc: 'Все враги изначально замедлены на 10%', type: 'enemySlowAll', value: 0.1 },
         // Снаряды-перки (стакаются)
-        { id: 'AMMO_ELECTRIC', rarity: 'COMMON',    name: 'Электроснаряд',     icon: '⚡', desc: '+1 цель цепи, +10% урон цепи',           type: 'ammoElectric', value: 1 },
-        { id: 'AMMO_FIRE',     rarity: 'COMMON',    name: 'Огненный снаряд',   icon: '🔥', desc: '+1 тик горения, +10% урон огня',         type: 'ammoFire',     value: 1 },
+        { id: 'AMMO_ELECTRIC', rarity: 'COMMON',    name: 'Электроснаряд',     icon: '⚡', desc: '+1 цель цепи, +15% урон цепи',           type: 'ammoElectric', value: 1 },
+        { id: 'AMMO_FIRE',     rarity: 'COMMON',    name: 'Огненный снаряд',   icon: '🔥', desc: '+1 тик горения, +12% урон огня',         type: 'ammoFire',     value: 1 },
         { id: 'AMMO_ICE',      rarity: 'COMMON',    name: 'Ледяной снаряд',    icon: '🧊', desc: '+10% замедление, +0.5с длительн.',       type: 'ammoIce',      value: 1 },
         { id: 'AMMO_MULTI',    rarity: 'RARE',      name: 'Сдвоенный выстрел', icon: '✦',  desc: '+1 доп. снаряд за выстрел',              type: 'ammoMulti',    value: 1 },
     ],
@@ -486,8 +489,8 @@ const CONFIG = {
     // СНАРЯДЫ-ПЕРКИ (стакаются, применяются ко всем оружиям)
     // ==============================================
     AMMO_PERKS: {
-        ELECTRIC: { chainTargetsPerStack: 1, chainDamagePerStack: 0.10 },
-        FIRE:     { burnTicksPerStack: 1, burnDamagePerStack: 0.10 },
+        ELECTRIC: { chainTargetsPerStack: 1, chainDamagePerStack: 0.15 },
+        FIRE:     { burnTicksPerStack: 1, burnDamagePerStack: 0.12 },
         ICE:      { slowPercentPerStack: 0.10, slowDurationPerStack: 500 },
         MULTI:    { extraProjectilesPerStack: 1 }
     },
@@ -561,12 +564,12 @@ const CONFIG = {
         METEOR_STORM: {
             name: '☄️ Метеоритный Дождь',
             desc: 'Метеориты падают на врагов!',
-            chance: 0.10, type: 'positive',
+            chance: 0.14, type: 'positive',
         },
         GOLDEN_CHEST: {
             name: '🪙 Золотой Сундук',
             desc: '+150 золота',
-            chance: 0.10, type: 'positive', gold: 150,
+            chance: 0.14, type: 'positive', gold: 150,
         },
         BERSERK_HORDE: {
             name: '😡 Ярость Орды',
@@ -582,7 +585,7 @@ const CONFIG = {
         ELITE_INVASION: {
             name: '💀 Нашествие Элиты',
             desc: 'Вся волна — элитные враги!',
-            chance: 0.02, type: 'challenge',
+            chance: 0.08, type: 'challenge',
         },
         CASTLE_REPAIR: {
             name: '🔨 Ремонт Замка',

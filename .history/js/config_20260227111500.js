@@ -14,18 +14,22 @@ const CONFIG = {
     // ==============================================
     SPRITES: {
         GOBLIN:       { file: 'sprites/goblin.png',    fw: 64,  fh: 64,  frames: 4, fps: 8 },
-        ORC:          { file: 'sprites/Orc.png',       fw: 64,  fh: 64,  frames: 4, fps: 6 },
+        ORC:          { file: 'sprites/orc.png',       fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL:        { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL_MEDIUM: { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
         TROLL_SMALL:  { file: 'sprites/troll.png',     fw: 64,  fh: 64,  frames: 4, fps: 6 },
-        DASHER:       { file: 'sprites/Dasher.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
-        // No files yet — use emoji fallback: ZIGZAG, SHOOTER, HEALER, BOSS, MEGA_BOSS
+        ZIGZAG:       { file: 'sprites/zigzag.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
+        DASHER:       { file: 'sprites/dasher.png',    fw: 64,  fh: 64,  frames: 4, fps: 10 },
+        SHOOTER:      { file: 'sprites/witchмне .png',   fw: 64,  fh: 64,  frames: 4, fps: 8 },
+        HEALER:       { file: 'sprites/healer.png',    fw: 64,  fh: 64,  frames: 4, fps: 6 },
+        BOSS:         { file: 'sprites/boss.png',      fw: 128, fh: 128, frames: 4, fps: 6 },
+        MEGA_BOSS:    { file: 'sprites/megaboss.png',  fw: 128, fh: 128, frames: 4, fps: 6 },
     },
 
     // Кастомное окружение (обычные картинки, не спрайтшиты)
     ENV: {
-        BACKGROUND: 'sprites/Background.png',
-        CASTLE:     null, // 'sprites/castle.png' — добавь файл чтобы включить
+        BACKGROUND: 'sprites/background.png',
+        CASTLE:     'sprites/castle.png',
     },
 
     // ==============================================
@@ -33,13 +37,13 @@ const CONFIG = {
     // Папка: sprites/  |  Размер: ~64x64, направление ВПРАВО
     // ==============================================
     WEAPON_SPRITES: {
-        CROSSBOW:    'sprites/Weapon_crossbow.png',
-        CANNON:      'sprites/Weapon_cannon.png',
-        BOOMERANG:   null, // 'sprites/weapon_boomerang.png'
-        PLASMA:      null,
-        FLAME_TOWER: null,
-        LASER:       null,
-        BALLISTA:    null,
+        CROSSBOW:    'sprites/weapon_crossbow.png',
+        CANNON:      'sprites/weapon_cannon.png',
+        BOOMERANG:   'sprites/weapon_boomerang.png',
+        PLASMA:      'sprites/weapon_plasma.png',
+        FLAME_TOWER: 'sprites/weapon_flametower.png',
+        LASER:       'sprites/weapon_laser.png',
+        BALLISTA:    'sprites/weapon_ballista.png',
     },
 
     // ==============================================
@@ -71,28 +75,27 @@ const CONFIG = {
         TORNADO:   null,
     },
 
-    // Статичные изображения мобов (фолбек, если нет спрайтшита)
+    // Старые картинки мобов (JPG фолбек)
     IMAGES: {
-        GOBLIN:       null, // handled by SPRITES spritesheet
-        ORC:          null, // handled by SPRITES spritesheet
-        TROLL:        null, // handled by SPRITES spritesheet
-        TROLL_MEDIUM: null,
-        TROLL_SMALL:  null,
-        DASHER:       null, // handled by SPRITES spritesheet
-        BOSS:         'sprites/Demon.png',
-        HEALER:       'sprites/Witch.png',
-        NECROMANCER:  'sprites/Witch.png',
-        SHOOTER:      null, // emoji fallback
-        ZIGZAG:       null, // emoji fallback
-        MEGA_BOSS:    null, // emoji fallback
+        // GOBLIN: 'images/goblin.jpg',
+        // ORC: 'images/orc.jpg',
+        // TROLL: 'images/troll.jpg',
+        // TROLL_MEDIUM: 'images/troll.jpg',
+        // TROLL_SMALL: 'images/troll.jpg',
+        // BOSS: 'images/boss.jpg',
+        // SHOOTER: 'images/shooter.jpg',
+        // ZIGZAG: 'images/zigzag.jpg',
+        // DASHER: 'images/dasher.jpg',
+        // HEALER: 'images/sniper.jpg',
+        // MEGA_BOSS: 'images/megaboss.jpg',
     },
 
     BACKGROUND: {
-        image: null, // background handled by ENV.BACKGROUND
-        skyColor1: 0x87ceeb,
-        skyColor2: 0x4682b4,
-        groundColor: 0x8b4513,
-        grassColor: 0x228b22
+        // image: 'images/background.jpg',
+        // skyColor1: 0x87ceeb,
+        // skyColor2: 0x4682b4,
+        // groundColor: 0x8b4513,
+        // grassColor: 0x228b22
     },
 
     CASTLE: { x: 100, y: 270, maxHp: 100, size: 80 },
