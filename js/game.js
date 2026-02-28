@@ -20,9 +20,9 @@ function defaultProgress() {
         equippedArtifacts: [],
         bestWavePerLevel: {},
         ownedWeapons: ['CROSSBOW'],
-        ownedMagic: ['WIND'],
+        ownedMages: ['AEROMANCER'],
         megaBossKills: 0,
-        loadout: { weapons: ['CROSSBOW'], magic: ['WIND'] }
+        loadout: { weapons: ['CROSSBOW'], mages: ['AEROMANCER', 'CRYOMANCER'] }
     };
 }
 

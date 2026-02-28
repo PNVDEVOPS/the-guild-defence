@@ -276,16 +276,24 @@ class Projectile {
                             this.scene.tweens.add({targets: growthFx, y: growthFx.y - 20, alpha: 0, duration: 400, onComplete: function(){growthFx.destroy();}});
                         }
 
-                        if (this.hitEnemies.length >= this.state.bounces) {
+                        if (!this.scene.voidPierce && this.hitEnemies.length >= this.state.bounces) {
                             this.destroy();
                             return;
                         }
+                    } else if (weapon.pierce && !this.scene.voidPierce) {
+                        // no bounces limit but voidPierce overrides
                     }
                     continue;
                 }
 
                 if (weapon.splash) {
                     this.doSplashDamage(enemy);
+                }
+
+                // Void Pierce: all projectiles become piercing
+                if (this.scene.voidPierce) {
+                    this.hitEnemies.push(enemy);
+                    continue;
                 }
 
                 this.destroy();
@@ -295,7 +303,12 @@ class Projectile {
     }
 
     hitEnemy(enemy) {
-        enemy.takeDamage(this.damage, this.isCrit);
+        var dmg = this.damage;
+        // Cursed Rounds: add % of enemy current HP as bonus damage
+        if (this.scene.cursedRoundsValue > 0) {
+            dmg = Math.floor(dmg + enemy.hp * this.scene.cursedRoundsValue);
+        }
+        enemy.takeDamage(dmg, this.isCrit);
         this.applyAmmoEffect(enemy);
         this.createHitEffect(enemy.x, enemy.y);
     }

@@ -44,7 +44,7 @@ class GameScene extends Phaser.Scene {
         this.maxWavesInLevel = this.levelConfig.endless ? 9999 : (this.levelConfig.waves || 10);
         // Load loadout from data or from saved progress
         var prog = window.gameProgress || {};
-        var savedLoadout = prog.loadout || { weapons: ['CROSSBOW'], magic: ['WIND', 'FREEZE', 'LIGHTNING'] };
+        var savedLoadout = prog.loadout || { weapons: ['CROSSBOW'], mages: ['AEROMANCER', 'CRYOMANCER'] };
         this.runLoadout = (data && data.loadout) ? data.loadout : savedLoadout;
     }
 
@@ -60,13 +60,12 @@ class GameScene extends Phaser.Scene {
         this.runGoldEarned = 0; this.megaBossKilledInRun = 0;
         this.maxCastleHp = Math.floor(CONFIG.CASTLE.maxHp * (1 + talentEffects.maxHpBonus) * (artifactEffects.castleHpMult || 1));
         this.castleHp = this.maxCastleHp;
-        this.castleRegen = talentEffects.regenBonus || 0;
         this.currentWave = 0; this.bossesKilled = 0; this.isGameOver = false;
         this.waveInProgress = false; this.waitingForNextWave = false; this.totalKills = 0;
         // Mana system
         this.maxMana = CONFIG.MANA ? CONFIG.MANA.max : 100;
         this.mana = this.maxMana;
-        this.manaRegenRate = CONFIG.MANA ? CONFIG.MANA.regenPerSec : 8;
+        this.manaRegenRate = (CONFIG.MANA ? CONFIG.MANA.regenPerSec : 2) + (artifactEffects.manaRegenArt || 0);
         // Roguelike XP system
         this.xp = 0; this.rogueLevel = 0;
         this.xpToNextLevel = CONFIG.XP_CONFIG ? CONFIG.XP_CONFIG.xpToFirstLevel : 60;
@@ -76,28 +75,50 @@ class GameScene extends Phaser.Scene {
         // Ammo perk stacks (from roguelike perk picks)
         this.ammoEffects = { electric: 0, fire: 0, ice: 0, multi: 0 };
         this.castleShieldActive = false; this.castleShieldReduction = 0; this.chainShotPairs = [];
+        this.isPaused = false; this.pauseOverlay = null;
+        // Late-game perks
+        this.bountyKillGold = 0; this.deathNovaPercent = 0; this.cursedRoundsValue = 0;
+        this.berserkerBonus = 0; this.berserkerStacks = 0;
+        this.adrenalinePerk = false; this.voidPierce = false;
+        this.explosiveDeathValue = 0; this.toxicAuraDmg = 0;
+        this.soulboundCharges = Math.round(talentEffects.soulShield || 0);
+        // VS-style orbit/chaos perks
+        this.orbitShardsCount = 0; this.orbitObjects = []; this.orbitAngle = 0;
+        this.chaosBoltActive = false; this._chaosTimer = 0;
+        this.enemyStartHpReduction = artifactEffects.enemyStartHpPct || 0;
         // All roguelike perk bonuses — must be reset each run
         this.flameSpreadBonus = 0; this.windPushBonus = 0; this.freezeExtendBonus = 0;
         this.healPowerBonus = 0; this.extraElectricChain = 0; this.magicDamageMult = 1;
         this.magicCdMult = 1; this.magicDurationMult = 1;
         this.boomerangTriple = 0; this.crossbowBarrage = 0; this.spreadShotBonus = 0;
-        this.damageBuff = 1 + talentEffects.damageBonus; this.damageBuffEndTime = 0;
+        this.baseDamageBuff = 1 + talentEffects.damageBonus;
+        this.baseDamageBuffPure = this.baseDamageBuff; // talent-only base, used for BERSERKER_AXE scaling
+        this.damageBuff = this.baseDamageBuff; this.damageBuffEndTime = 0;
         this.reviveUsed = false; this.gemAdUsed = 0;
-        // Loadout-based weapon/magic init
-        var loadout = this.runLoadout || { weapons: ['CROSSBOW'], magic: ['WIND', 'FREEZE', 'LIGHTNING'] };
+        // Loadout-based weapon/mage init
+        var loadout = this.runLoadout || { weapons: ['CROSSBOW'], mages: ['AEROMANCER'] };
         this.unlockedWeapons = loadout.weapons.slice();
         this.currentWeapon = this.unlockedWeapons[0] || 'CROSSBOW';
-        this.activeMagic = loadout.magic.slice();
+        this.activeMages = loadout.mages ? loadout.mages.slice() : ['AEROMANCER'];
+
+        // Mage states — per mage: lastAutoTime + 4 ability cooldowns
+        this.mageStates = {};
+        this.mageGolemObjects = [];
+        for (var mgi = 0; mgi < this.activeMages.length; mgi++) {
+            var mgKey = this.activeMages[mgi];
+            this.mageStates[mgKey] = { lastAutoTime: 0, abilityCooldowns: [0, 0, 0, 0] };
+        }
 
         // Progression effects stored for use
-        this.armorReduction = talentEffects.armorReduction || 0;
+        this.armorReduction = Math.min(0.7, (talentEffects.armorReduction || 0) + (artifactEffects.damageReductArt || 0));
         this.lifestealPercent = artifactEffects.lifesteal || 0;
         this.goldMult = artifactEffects.goldMult || 1;
         this.magicCdMult = (1 - talentEffects.cdReduction) * (artifactEffects.magicCdMult || 1);
-        this.magicDamageMult = 1 + talentEffects.magicDamageBonus;
-        this.magicDurationMult = 1 + talentEffects.durationBonus;
+        this.magicDamageMult = (1 + talentEffects.magicDamageBonus) * (artifactEffects.magicDamageMult || 1);
+        this.magicDurationMult = (1 + talentEffects.durationBonus) * (artifactEffects.freezeDurMult || 1);
         this.baseCritBonus = talentEffects.critBonus || 0;
         this.fireRateMult = artifactEffects.fireRateMult || 1;
+        this.waveScalingDmgArt = artifactEffects.waveScalingDmg || 0;
 
         this.deadEnemyPositions = [];
 
@@ -116,11 +137,21 @@ class GameScene extends Phaser.Scene {
             };
         }
 
+        // Apply artifact bonusPierce and critBonus to all weapon states
+        if (artifactEffects.bonusPierce > 0) {
+            for (var wkA in this.weaponStates) this.weaponStates[wkA].bounces = (this.weaponStates[wkA].bounces || 0) + artifactEffects.bonusPierce;
+        }
+        if (artifactEffects.critBonus > 0) {
+            for (var wkB in this.weaponStates) this.weaponStates[wkB].critChance = (this.weaponStates[wkB].critChance || 0) + artifactEffects.critBonus;
+        }
+        // Apply startAmmo artifact effect
+        if (artifactEffects.startAmmo) {
+            for (var wkC in this.weaponStates) this.weaponStates[wkC].ammoType = artifactEffects.startAmmo;
+        }
+
         this.lastFireTime = 0; this.enemies = []; this.projectiles = [];
         this.pendingSpawnCount = 0;
-        this.magicCooldowns = {}; this.magicInProgress = false;
-        var mk2 = Object.keys(CONFIG.MAGIC);
-        for (var i = 0; i < mk2.length; i++) this.magicCooldowns[mk2[i]] = 0;
+        this.magicInProgress = false;
 
         // Ad timer
         this.lastAdTime = Date.now();
@@ -131,9 +162,6 @@ class GameScene extends Phaser.Scene {
 
         var self = this;
         this.time.addEvent({ delay: 1000, callback: function() {
-            if (self.castleRegen > 0 && self.castleHp < self.maxCastleHp) {
-                self.castleHp = Math.min(self.maxCastleHp, self.castleHp + self.castleRegen); self.updateHpText();
-            }
             // Check timed ad
             if (Date.now() - self.lastAdTime >= CONFIG.ADS.interstitialIntervalMs) {
                 self.lastAdTime = Date.now();
@@ -144,7 +172,9 @@ class GameScene extends Phaser.Scene {
     }
 
     calculateArtifactEffects(equipped) {
-        var effects = { castleHpMult: 1, fireRateMult: 1, magicCdMult: 1, goldMult: 1, lifesteal: 0, startAmmo: null };
+        var effects = { castleHpMult: 1, fireRateMult: 1, magicCdMult: 1, goldMult: 1, lifesteal: 0, startAmmo: null,
+            damageReductArt: 0, manaRegenArt: 0, enemyStartHpPct: 0, bonusPierce: 0, critBonus: 0,
+            magicDamageMult: 1, freezeDurMult: 1, waveScalingDmg: 0 };
         for (var i = 0; i < equipped.length; i++) {
             var art = CONFIG.ARTIFACTS[equipped[i]];
             if (!art) continue;
@@ -155,12 +185,20 @@ class GameScene extends Phaser.Scene {
             if (e.goldMult) effects.goldMult *= e.goldMult;
             if (e.lifesteal) effects.lifesteal += e.lifesteal;
             if (e.startAmmo) effects.startAmmo = e.startAmmo;
+            if (e.damageReductArt) effects.damageReductArt += e.damageReductArt;
+            if (e.manaRegenArt) effects.manaRegenArt += e.manaRegenArt;
+            if (e.enemyStartHpPct) effects.enemyStartHpPct += e.enemyStartHpPct;
+            if (e.bonusPierce) effects.bonusPierce += e.bonusPierce;
+            if (e.critBonus) effects.critBonus += e.critBonus;
+            if (e.magicDamageMult) effects.magicDamageMult *= e.magicDamageMult;
+            if (e.freezeDurMult) effects.freezeDurMult *= e.freezeDurMult;
+            if (e.waveScalingDmg) effects.waveScalingDmg += e.waveScalingDmg;
         }
         return effects;
     }
 
     calculateTalentEffects(talents) {
-        var effects = { damageBonus: 0, fireRateBonus: 0, critBonus: 0, maxHpBonus: 0, regenBonus: 0, armorReduction: 0, cdReduction: 0, magicDamageBonus: 0, durationBonus: 0 };
+        var effects = { damageBonus: 0, fireRateBonus: 0, critBonus: 0, maxHpBonus: 0, soulShield: 0, armorReduction: 0, cdReduction: 0, magicDamageBonus: 0, durationBonus: 0 };
         if (talents.ATTACK) {
             if (talents.ATTACK.damage) effects.damageBonus = talents.ATTACK.damage * CONFIG.TALENTS.ATTACK.damage.effectPerLevel;
             if (talents.ATTACK.fireRate) effects.fireRateBonus = talents.ATTACK.fireRate * CONFIG.TALENTS.ATTACK.fireRate.effectPerLevel;
@@ -168,7 +206,7 @@ class GameScene extends Phaser.Scene {
         }
         if (talents.DEFENSE) {
             if (talents.DEFENSE.maxHp) effects.maxHpBonus = talents.DEFENSE.maxHp * CONFIG.TALENTS.DEFENSE.maxHp.effectPerLevel;
-            if (talents.DEFENSE.regen) effects.regenBonus = talents.DEFENSE.regen * CONFIG.TALENTS.DEFENSE.regen.effectPerLevel;
+            if (talents.DEFENSE.soulShield && CONFIG.TALENTS.DEFENSE.soulShield) effects.soulShield = talents.DEFENSE.soulShield * CONFIG.TALENTS.DEFENSE.soulShield.effectPerLevel;
             if (talents.DEFENSE.armor) effects.armorReduction = talents.DEFENSE.armor * CONFIG.TALENTS.DEFENSE.armor.effectPerLevel;
         }
         if (talents.MAGIC) {
@@ -240,23 +278,25 @@ class GameScene extends Phaser.Scene {
 
     createCastle() {
         var x = CONFIG.CASTLE.x, y = CONFIG.CASTLE.y, size = CONFIG.CASTLE.size;
-        if (this.textures.exists('env_castle')) {
-            this.castle = this.add.image(x, y, 'env_castle').setDisplaySize(size*1.5, size*2).setDepth(10);
-        } else {
-            var cg = this.add.graphics().setDepth(10);
-            cg.fillStyle(0x4a4a5a); cg.fillRect(x-size/2, y-size*0.4, size, size*1.1);
-            cg.fillStyle(0x3a3a4a); cg.fillRect(x-size/2, y-size*0.4, size*0.15, size*1.1);
-            var bw = size/5;
-            for (var i = 0; i < 5; i++) { var bx = x - size/2 + i*bw; if (i%2===0) { cg.fillStyle(0x5a5a6a); cg.fillRect(bx, y-size*0.4-12, bw, 12); } }
-            cg.fillStyle(0x1a0e0a); cg.fillRect(x-size/7, y+size*0.2, size/3.5, size*0.5);
-            cg.fillStyle(0xddaa44, 0.7); cg.fillRect(x-size/3, y-size*0.15, 6, 8);
-            cg.fillRect(x+size/3-6, y-size*0.15, 6, 8);
-            cg.fillStyle(0x666666); cg.fillRect(x, y-size*0.4-12, 2, -24);
-            cg.fillStyle(0xaa2222); cg.fillRect(x+2, y-size*0.4-36, 12, 8);
-            this.castle = this.add.rectangle(x, y, size, size*1.5, 0x000000, 0).setDepth(10);
-        }
+        // Invisible rectangle used for shake tween reference and HP bar positioning
+        this.castle = this.add.rectangle(x, y, size, size*1.5, 0x000000, 0).setDepth(10);
         this.castleHpBarBg = this.add.rectangle(x, y-size*0.8-6, size*1.1, 6, 0x1a0e0a, 0.8).setStrokeStyle(1, 0x6a4a2a).setDepth(11);
         this.castleHpBar = this.add.rectangle(x, y-size*0.8-6, size*1.1, 4, 0x44cc44).setDepth(12);
+        // Mage portraits spread along the wall (battlements area)
+        this.magePortraits = [];
+        var numMages = this.activeMages.length;
+        var wallTopY = y - size * 0.4 - 6;       // top of battlement
+        var wallLeft  = x - size/2 + 12;          // x=72
+        var wallRight = x + size/2 - 12;          // x=128
+        var wallSpacing = numMages > 1 ? (wallRight - wallLeft) / (numMages - 1) : 0;
+        for (var mpi = 0; mpi < numMages; mpi++) {
+            var mgpCfg = CONFIG.MAGES && CONFIG.MAGES[this.activeMages[mpi]];
+            if (!mgpCfg) continue;
+            var mpX = numMages > 1 ? wallLeft + mpi * wallSpacing : x;
+            // Name label below emoji
+            var mpt = this.add.text(mpX, wallTopY, mgpCfg.portrait || mgpCfg.icon, {fontSize:'20px'}).setOrigin(0.5, 1).setDepth(20);
+            this.magePortraits.push(mpt);
+        }
         this.crossbowX = x + 50; this.crossbowY = y - 10;
         this.weaponSprite = null; this.weaponEmoji = null;
         var wtk = 'weapon_' + this.currentWeapon;
@@ -319,7 +359,7 @@ class GameScene extends Phaser.Scene {
         sep.fillRect(235, H-48, 2, 40);
         sep.fillRect(W-138, H-48, 2, 40);
 
-        this.createMagicButtons(); this.createWeaponButtons(); this.createAdBonusButton(); this.createSoundToggle();
+        this.createMageButtons(); this.createWeaponButtons(); this.createAdBonusButton(); this.createSoundToggle(); this.createMenuButton();
     }
 
     drawPixelPanel(x, y, w, h, depth) {
@@ -334,31 +374,48 @@ class GameScene extends Phaser.Scene {
         return g;
     }
 
-    createMagicButtons() {
-        var H = CONFIG.GAME_HEIGHT, bY = H-28, bX = 30; this.magicButtons = []; var self = this;
-        var MAGIC_HOTKEYS = ['Q','W','E','R','T'];
-        var mk = this.activeMagic && this.activeMagic.length > 0 ? this.activeMagic : Object.keys(CONFIG.MAGIC);
-        for (var i = 0; i < mk.length; i++) {
-            var mt = mk[i], mg = CONFIG.MAGIC[mt];
-            if (!mg) continue;
-            var bg = this.add.graphics().setDepth(100);
-            bg.fillStyle(0x1a0e0a, 0.8); bg.fillRect(bX-21, bY-18, 42, 36);
-            bg.lineStyle(1, mg.color, 0.5); bg.strokeRect(bX-21, bY-18, 42, 36);
-            bg.lineStyle(1, mg.color, 0.15); bg.strokeRect(bX-19, bY-16, 38, 32);
-            var btn = this.add.rectangle(bX, bY, 42, 36, 0x000000, 0).setInteractive({useHandCursor:true}).setDepth(103);
-            btn.magicType = mt;
-            var mtk = 'magic_' + mt;
-            if (this.textures.exists(mtk)) this.add.image(bX, bY-3, mtk).setDisplaySize(22,22).setDepth(101);
-            else this.add.text(bX, bY-4, mg.icon, {fontSize:'16px'}).setOrigin(0.5).setDepth(101);
-            this.add.text(bX, bY+13, MAGIC_HOTKEYS[i] || '', {fontSize:'6px',color:'#8a6a42',fontFamily:FONT}).setOrigin(0.5).setDepth(101);
-            btn.cooldownOverlay = this.add.rectangle(bX, bY, 42, 36, 0x000000, 0.7).setVisible(false).setDepth(102);
-            // Cooldown progress bar — grows left-to-right at bottom of button
-            btn.cdBar = this.add.rectangle(bX - 21, bY + 15, 0, 4, mg.color || 0xaaaaff, 0.9).setOrigin(0, 0.5).setDepth(104);
-            // Countdown text
-            btn.cdText = this.add.text(bX, bY, '', {fontSize:'6px', color:'#ffffff', fontFamily:FONT, stroke:'#000000', strokeThickness:2}).setOrigin(0.5).setDepth(105);
-            btn.btnBY = bY; btn.btnBX = bX;
-            (function(t) { btn.on('pointerdown', function() { self.useMagic(t); }); })(mt);
-            this.magicButtons.push(btn); bX += 48;
+    createMageButtons() {
+        var H = CONFIG.GAME_HEIGHT, bY = H-28;
+        this.mageButtons = [];
+        var self = this;
+        // Mage 1: Q W E R | Mage 2: A S D F
+        var mageHotkeys = [['Q','W','E','R'], ['A','S','D','F']];
+        var bX = 248; // start after weapon section separator
+        for (var mi = 0; mi < this.activeMages.length; mi++) {
+            var mageKey = this.activeMages[mi];
+            var mgCfg = CONFIG.MAGES && CONFIG.MAGES[mageKey];
+            if (!mgCfg) continue;
+            // Portrait block (40px wide)
+            var portBg = this.add.graphics().setDepth(100);
+            portBg.fillStyle(0x1a1a2a, 0.85); portBg.fillRect(bX, bY-18, 40, 36);
+            portBg.lineStyle(2, mgCfg.color, 0.85); portBg.strokeRect(bX, bY-18, 40, 36);
+            this.add.text(bX+20, bY-3, mgCfg.portrait || mgCfg.icon, {fontSize:'16px'}).setOrigin(0.5).setDepth(101);
+            this.add.text(bX+20, bY+14, mgCfg.name.slice(0,6), {fontSize:'4px',color:'#c8b898',fontFamily:FONT}).setOrigin(0.5).setDepth(101);
+            bX += 44; // gap to first ability
+            // 4 ability buttons
+            for (var ai = 0; ai < mgCfg.abilities.length; ai++) {
+                var ab = mgCfg.abilities[ai];
+                var isUlt = ab.isUlt;
+                var btnW = isUlt ? 44 : 36;
+                var btnColor = isUlt ? 0xffaa00 : mgCfg.color;
+                var cx2 = bX + btnW/2;
+                var bbg = this.add.graphics().setDepth(100);
+                bbg.fillStyle(0x1a0e0a, 0.8); bbg.fillRect(bX, bY-18, btnW, 36);
+                bbg.lineStyle(isUlt ? 2 : 1, btnColor, isUlt ? 0.9 : 0.5); bbg.strokeRect(bX, bY-18, btnW, 36);
+                if (isUlt) { bbg.lineStyle(1, 0xffcc44, 0.25); bbg.strokeRect(bX+2, bY-16, btnW-4, 32); }
+                var btn = this.add.rectangle(cx2, bY, btnW, 36, 0x000000, 0).setInteractive({useHandCursor:true}).setDepth(103);
+                btn.mageKey = mageKey; btn.abilityIdx = ai;
+                btn.btnW = btnW; btn.btnBX = cx2; btn.btnBY = bY;
+                this.add.text(cx2, bY-5, ab.icon, {fontSize: isUlt ? '13px' : '11px'}).setOrigin(0.5).setDepth(101);
+                this.add.text(cx2, bY+13, mageHotkeys[mi][ai] || '', {fontSize:'5px', color: isUlt ? '#f0c866' : '#8a6a42', fontFamily:FONT}).setOrigin(0.5).setDepth(101);
+                btn.cooldownOverlay = this.add.rectangle(cx2, bY, btnW, 36, 0x000000, 0.7).setVisible(false).setDepth(102);
+                btn.cdBar = this.add.rectangle(bX, bY+15, 0, 4, btnColor, 0.9).setOrigin(0, 0.5).setDepth(104);
+                btn.cdText = this.add.text(cx2, bY, '', {fontSize:'5px', color:'#ffffff', fontFamily:FONT, stroke:'#000000', strokeThickness:2}).setOrigin(0.5).setDepth(105);
+                (function(mk, idx) { btn.on('pointerdown', function() { self.useMageAbility(mk, idx); }); })(mageKey, ai);
+                this.mageButtons.push(btn);
+                bX += btnW + 2;
+            }
+            bX += 10; // gap between mage groups
         }
     }
 
@@ -448,8 +505,71 @@ class GameScene extends Phaser.Scene {
 
     createSoundToggle() {
         var self = this, W = CONFIG.GAME_WIDTH, H = CONFIG.GAME_HEIGHT;
-        this.soundBtn = this.add.text(W-14, H-28, 'SFX', {fontSize:'6px',color:'#8a6a42',fontFamily:FONT}).setOrigin(1,0.5).setDepth(105).setInteractive({useHandCursor:true});
+        this.soundBtn = this.add.text(W-14, H-18, 'SFX', {fontSize:'6px',color:'#8a6a42',fontFamily:FONT}).setOrigin(1,0.5).setDepth(105).setInteractive({useHandCursor:true});
         this.soundBtn.on('pointerdown', function() { window.sfx.enabled = !window.sfx.enabled; self.soundBtn.setColor(window.sfx.enabled ? '#8a6a42' : '#4a2a1a'); });
+    }
+
+    createMenuButton() {
+        var self = this, W = CONFIG.GAME_WIDTH, H = CONFIG.GAME_HEIGHT;
+        var bx = W - 54, by = H - 38, bw = 38, bh = 16;
+        var bg = this.add.graphics().setDepth(105);
+        bg.fillStyle(0x2a1a0e, 0.85); bg.fillRect(bx - bw/2, by - bh/2, bw, bh);
+        bg.lineStyle(1, 0x8a6a42, 0.6); bg.strokeRect(bx - bw/2, by - bh/2, bw, bh);
+        this.add.text(bx, by, '⏸ МЕНЮ', {fontSize:'5px', color:'#c8b898', fontFamily:FONT}).setOrigin(0.5).setDepth(106);
+        var btn = this.add.rectangle(bx, by, bw, bh, 0x000000, 0).setInteractive({useHandCursor:true}).setDepth(107);
+        btn.on('pointerover', function() { bg.clear(); bg.fillStyle(0x3a2a1a, 0.9); bg.fillRect(bx-bw/2,by-bh/2,bw,bh); bg.lineStyle(1,0xf0c866,0.7); bg.strokeRect(bx-bw/2,by-bh/2,bw,bh); });
+        btn.on('pointerout',  function() { bg.clear(); bg.fillStyle(0x2a1a0e, 0.85); bg.fillRect(bx-bw/2,by-bh/2,bw,bh); bg.lineStyle(1,0x8a6a42,0.6); bg.strokeRect(bx-bw/2,by-bh/2,bw,bh); });
+        btn.on('pointerdown', function() { self.showPauseMenu(); });
+    }
+
+    showPauseMenu() {
+        if (this.pauseOverlay) return;
+        this.isPaused = true;
+        var self = this, W = CONFIG.GAME_WIDTH, H = CONFIG.GAME_HEIGHT;
+        var els = [];
+        var ov = this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.75).setDepth(500);
+        els.push(ov);
+        els.push(this.add.text(W/2, H/2 - 70, '⏸ ПАУЗА', {fontSize:'20px',color:'#f0c866',fontFamily:FONT,stroke:'#1a0e0a',strokeThickness:4}).setOrigin(0.5).setDepth(501));
+
+        var btns = [
+            { label: '▶  ПРОДОЛЖИТЬ', color: '#88ee88', action: function() { self.hidePauseMenu(); } },
+            { label: '↩  В МЕНЮ',     color: '#ee8866', action: function() {
+                self.saveRunRecord();
+                self.hidePauseMenu();
+                self.scene.start('MenuScene');
+            }},
+            { label: window.sfx.enabled ? '🔊 ЗВУК ВКЛ' : '🔇 ЗВУК ВЫКЛ', color: '#aabbcc', action: function() {
+                window.sfx.enabled = !window.sfx.enabled;
+                self.soundBtn.setColor(window.sfx.enabled ? '#8a6a42' : '#4a2a1a');
+                self.hidePauseMenu(); self.showPauseMenu();
+            }}
+        ];
+
+        for (var i = 0; i < btns.length; i++) {
+            (function(b, iy) {
+                var by2 = H/2 - 20 + iy * 38, bw2 = 220, bh2 = 28;
+                var bbg = self.add.graphics().setDepth(501);
+                bbg.fillStyle(0x2a1a0e, 0.9); bbg.fillRect(W/2 - bw2/2, by2 - bh2/2, bw2, bh2);
+                bbg.lineStyle(1, 0x6a4a2a, 0.7); bbg.strokeRect(W/2 - bw2/2, by2 - bh2/2, bw2, bh2);
+                els.push(bbg);
+                var bt = self.add.text(W/2, by2, b.label, {fontSize:'8px',color:b.color,fontFamily:FONT}).setOrigin(0.5).setDepth(502);
+                els.push(bt);
+                var hitbox = self.add.rectangle(W/2, by2, bw2, bh2, 0x000000, 0).setInteractive({useHandCursor:true}).setDepth(503);
+                hitbox.on('pointerover',  function() { bbg.clear(); bbg.fillStyle(0x3a2a12,0.95); bbg.fillRect(W/2-bw2/2,by2-bh2/2,bw2,bh2); bbg.lineStyle(1,0xf0c866,0.8); bbg.strokeRect(W/2-bw2/2,by2-bh2/2,bw2,bh2); });
+                hitbox.on('pointerout',   function() { bbg.clear(); bbg.fillStyle(0x2a1a0e,0.9); bbg.fillRect(W/2-bw2/2,by2-bh2/2,bw2,bh2); bbg.lineStyle(1,0x6a4a2a,0.7); bbg.strokeRect(W/2-bw2/2,by2-bh2/2,bw2,bh2); });
+                hitbox.on('pointerdown', b.action);
+                els.push(hitbox);
+            })(btns[i], i);
+        }
+
+        this.pauseOverlay = els;
+    }
+
+    hidePauseMenu() {
+        if (!this.pauseOverlay) return;
+        for (var i = 0; i < this.pauseOverlay.length; i++) if (this.pauseOverlay[i]) this.pauseOverlay[i].destroy();
+        this.pauseOverlay = null;
+        this.isPaused = false;
     }
 
     updateWeaponButtons() {
@@ -589,7 +709,18 @@ class GameScene extends Phaser.Scene {
         this.castleHp -= actual; this.updateHpText();
         this.tweens.add({targets:this.castle,x:'+=4',duration:40,yoyo:true,repeat:2});
         if(this.vfx) this.vfx.castleImpact(CONFIG.CASTLE.x, CONFIG.CASTLE.y);
-        window.sfx.castleHit(); if(this.castleHp<=0) this.gameOver();
+        window.sfx.castleHit();
+        if (this.castleHp <= 0) {
+            if (this.soulboundCharges > 0) {
+                // Soulbound: absorb lethal damage, restore to 1 HP
+                this.soulboundCharges--;
+                this.castleHp = 1; this.updateHpText();
+                this.showMessage('⛓️ Оковы Душ! (' + this.soulboundCharges + ' ост.)', '#cc88ff');
+                if (this.vfx) this.vfx.flash(0xaa44ff, 0.5, 600);
+            } else {
+                this.gameOver();
+            }
+        }
     }
 
     setupInput() {
@@ -603,19 +734,38 @@ class GameScene extends Phaser.Scene {
                 self.input.keyboard.on('keydown-' + key, function() { self.selectWeapon(weaponType); });
             })(self.unlockedWeapons[wki], WEAPON_HOTKEYS[wki]);
         }
-        // Dynamic magic hotkeys Q/W/E/R/T based on activeMagic loadout order
-        var MAGIC_HOTKEYS = ['Q','W','E','R','T'];
-        for (var hki = 0; hki < Math.min((self.activeMagic||[]).length, MAGIC_HOTKEYS.length); hki++) {
-            (function(magicType, key) {
-                self.input.keyboard.on('keydown-' + key, function() { self.useMagic(magicType); });
-            })(self.activeMagic[hki], MAGIC_HOTKEYS[hki]);
+        // Mage hotkeys: Mage1 = Q/W/E/R, Mage2 = A/S/D/F
+        var MAGE_HOTKEYS = [['Q','W','E','R'], ['A','S','D','F']];
+        for (var mhi = 0; mhi < self.activeMages.length && mhi < MAGE_HOTKEYS.length; mhi++) {
+            (function(mageKey, keyRow) {
+                for (var ki = 0; ki < keyRow.length; ki++) {
+                    (function(mk, idx, k) {
+                        self.input.keyboard.on('keydown-' + k, function() { self.useMageAbility(mk, idx); });
+                    })(mageKey, ki, keyRow[ki]);
+                }
+            })(self.activeMages[mhi], MAGE_HOTKEYS[mhi]);
         }
+        // Escape = toggle pause
+        this.input.keyboard.on('keydown-ESC', function() {
+            if (self.isPaused) self.hidePauseMenu(); else self.showPauseMenu();
+        });
+    }
+
+    getMaxProjectiles() {
+        var lvl = this.rogueLevel || 0;
+        if (lvl < 20) return 2;
+        if (lvl < 40) return 5;
+        if (lvl < 60) return 8;
+        return 12;
     }
 
     shoot(tx, ty) {
         var st = this.weaponStates[this.currentWeapon], ct = this.time.now;
-        if (ct - this.lastFireTime < st.fireRate) return; this.lastFireTime = ct;
+        var effectiveRate = (this.adrenalinePerk && this.castleHp < this.maxCastleHp * 0.30)
+            ? Math.floor(st.fireRate / 2) : st.fireRate;
+        if (ct - this.lastFireTime < effectiveRate) return; this.lastFireTime = ct;
         var extraFromAmmo = (this.ammoEffects && this.ammoEffects.multi) ? this.ammoEffects.multi : 0;
+        var maxExtra = this.getMaxProjectiles() - 1;
         var tp = 1 + extraFromAmmo, sa = 5;
         var ba = Phaser.Math.Angle.Between(this.crossbowX,this.crossbowY,tx,ty), bd = st.damage*this.damageBuff;
         var weapon = CONFIG.WEAPONS[this.currentWeapon];
@@ -639,10 +789,10 @@ class GameScene extends Phaser.Scene {
             }
         } else {
             // BOOMERANG triple perk: extra boomerangs at offset angles
-            var extraBoomerang = (this.currentWeapon === 'BOOMERANG' && this.boomerangTriple) ? Math.min(this.boomerangTriple, 4) : 0;
+            var extraBoomerang = (this.currentWeapon === 'BOOMERANG' && this.boomerangTriple) ? this.boomerangTriple : 0;
             // CROSSBOW barrage perk: extra arrows in a wide fan
-            var extraCrossbow = (this.currentWeapon === 'CROSSBOW' && this.crossbowBarrage) ? Math.min(this.crossbowBarrage, 8) : 0;
-            var totalExtra = extraFromAmmo + extraBoomerang + extraCrossbow;
+            var extraCrossbow = (this.currentWeapon === 'CROSSBOW' && this.crossbowBarrage) ? this.crossbowBarrage : 0;
+            var totalExtra = Math.min(maxExtra, extraFromAmmo + extraBoomerang + extraCrossbow);
             var tp2 = 1 + totalExtra;
             // Wider spread for crossbow barrage
             var spreadAngle = (extraCrossbow > 0) ? 12 : sa;
@@ -694,27 +844,39 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    useMagic(mt) {
-        if (this.magicInProgress) return;
-        if (this.activeMagic && this.activeMagic.indexOf(mt) === -1) return;
-        var mg = CONFIG.MAGIC[mt], ct = this.time.now;
-        var cooldown = Math.floor(mg.cooldown * this.magicCdMult);
-        if (ct < this.magicCooldowns[mt]) return;
-        var manaCost = mg.manaCost || 0;
-        if (this.mana < manaCost) return;
-        this.magicInProgress = true;
+    useMageAbility(mageKey, abilityIdx) {
+        var mgCfg = CONFIG.MAGES && CONFIG.MAGES[mageKey];
+        if (!mgCfg) return;
+        var ability = mgCfg.abilities[abilityIdx];
+        if (!ability) return;
+        var st = this.mageStates[mageKey];
+        if (!st) return;
+        var ct = this.time.now;
+        var cooldown = Math.floor(ability.cooldown * this.magicCdMult);
+        if (ct < st.abilityCooldowns[abilityIdx]) return;
+        var manaCost = ability.manaCost || 0;
+        if (this.mana < manaCost) { this.showMessage('Нет маны!', '#4477cc'); return; }
         this.mana -= manaCost;
         this.updateManaBar();
-        this.magicCooldowns[mt] = ct + cooldown; window.sfx.magic(mt);
-        if (mt==='WIND') Magic.useWind(this);
-        else if (mt==='FREEZE') Magic.useFreeze(this);
-        else if (mt==='LIGHTNING') Magic.useLightning(this);
-        else if (mt==='HEAL') this.healCastle(Math.floor((mg.healAmount || 50) * this.magicDurationMult) + (this.healPowerBonus || 0));
-        else if (mt==='METEOR') Magic.useMeteor(this);
-        else if (mt==='SHIELD') Magic.useShield(this);
-        else if (mt==='LAVA') Magic.useLava(this);
-        else if (mt==='TORNADO') Magic.useTornado(this);
-        var self = this; this.time.delayedCall(100, function(){self.magicInProgress=false;});
+        st.abilityCooldowns[abilityIdx] = ct + cooldown;
+        window.sfx.magic(mageKey);
+        var key = ability.key;
+        if      (key === 'SQUALL')        Magic.useSquall(this);
+        else if (key === 'VORTEX')        Magic.useVortex(this);
+        else if (key === 'AERO_HEAL')     this.healCastle(Math.floor(50 * this.magicDurationMult) + (this.healPowerBonus || 0));
+        else if (key === 'LIGHTNING_ULT') Magic.useLightning(this);
+        else if (key === 'FREEZE_RAY')    Magic.useFreezeRay(this);
+        else if (key === 'RAIN')          Magic.useRain(this);
+        else if (key === 'CRYO_HEAL')     Magic.useCryoHeal(this);
+        else if (key === 'ICE_STORM')     Magic.useIceStorm(this);
+        else if (key === 'QUAKE')         Magic.useQuake(this);
+        else if (key === 'THORNS')        Magic.useThorns(this);
+        else if (key === 'GEO_SHIELD')    Magic.useShield(this);
+        else if (key === 'GOLEM_SUMMON')  Magic.useGolemSummon(this);
+        else if (key === 'FIRE_RAIN')     Magic.useMeteor(this);
+        else if (key === 'LAVACAST')      Magic.useLava(this);
+        else if (key === 'LAVA_ARMOR')    Magic.useLavaArmor(this);
+        else if (key === 'DRAGON_BREATH') Magic.useDragonBreath(this);
     }
 
     healCastle(amt) {
@@ -730,6 +892,13 @@ class GameScene extends Phaser.Scene {
         if (this.waveInProgress) return;
         this.currentWave++; this.waveInProgress = true; this.waitingForNextWave = false;
         this.waveGoldMult = 1; this.currentEvent = null;
+        this.berserkerStacks = 0; // reset berserker fire rate bonus each wave
+        // BERSERKER_AXE: +waveScalingDmg% weapon damage per 10 waves
+        if (this.waveScalingDmgArt) {
+            var absW = (this.currentLevel - 1) * 30 + this.currentWave;
+            this.baseDamageBuff = this.baseDamageBuffPure * (1 + this.waveScalingDmgArt * Math.floor(absW / 10));
+            if (this.damageBuff < this.baseDamageBuff) this.damageBuff = this.baseDamageBuff;
+        }
 
         var levelName = this.levelConfig.name || ('Level ' + this.currentLevel);
         var waveSuffix = this.levelConfig.endless ? '∞' : this.maxWavesInLevel;
@@ -768,6 +937,8 @@ class GameScene extends Phaser.Scene {
 
     spawnEnemy(et, pos) {
         var m = this.getWaveMultiplier(), self = this;
+        // Apply artifact: enemy starts with less HP
+        if (this.enemyStartHpReduction > 0) m.hp *= Math.max(0.1, 1 - this.enemyStartHpReduction);
         // Apply event modifiers
         var ev = this.currentEvent ? CONFIG.EVENTS[this.currentEvent] : null;
         if (ev && ev.hpMult) m.hp *= ev.hpMult;
@@ -866,7 +1037,6 @@ class GameScene extends Phaser.Scene {
     generateWaveEnemies() {
         var c = CONFIG.WAVE_CONFIG, lc = this.levelConfig, w = this.currentWave;
         var absoluteWave = (this.currentLevel - 1) * 30 + w;
-        var forceElite = this.currentEvent === 'ELITE_INVASION';
         var ec = 0;
         if (absoluteWave >= c.eliteStartWave) {
             ec = Math.min(0.65, c.eliteChanceBase + (absoluteWave - c.eliteStartWave) * c.eliteChancePerWave);
@@ -896,11 +1066,11 @@ class GameScene extends Phaser.Scene {
 
         if (isMegaBossWave && lc.megaBossPool && lc.megaBossPool.length > 0) {
             e.push(lc.megaBossPool[Math.floor(Math.random() * lc.megaBossPool.length)]);
-            var n = Math.min(20, Math.max(4, c.baseEnemyCount + Math.floor(w * c.enemiesPerWave / 3)));
+            var n = Math.min(6, Math.max(2, Math.floor(w / 8)));
             for (var i = 0; i < n; i++) e.push(pool[Math.floor(Math.random() * pool.length)]);
         } else if (isBossWave && lc.bossPool && lc.bossPool.length > 0) {
             e.push(lc.bossPool[Math.floor(Math.random() * lc.bossPool.length)]);
-            var n = Math.min(25, Math.max(3, Math.floor((c.baseEnemyCount + Math.floor(w * c.enemiesPerWave / 2)) * 0.6)));
+            var n = Math.min(8, Math.max(2, Math.floor(w / 4)));
             for (var i = 0; i < n; i++) e.push(pool[Math.floor(Math.random() * pool.length)]);
         } else {
             var n = Math.min(40, c.baseEnemyCount + Math.floor(w * c.enemiesPerWave / 2));
@@ -909,7 +1079,6 @@ class GameScene extends Phaser.Scene {
 
         return e.map(function(t) {
             if (t === 'BOSS' || t === 'MEGA_BOSS' || t === 'MEGA_GOLEM') return t;
-            if (forceElite && CONFIG.ENEMIES[t + '_ELITE']) return t + '_ELITE';
             if (ec > 0 && Math.random() < ec && CONFIG.ENEMIES[t + '_ELITE']) return t + '_ELITE';
             return t;
         });
@@ -1008,32 +1177,62 @@ class GameScene extends Phaser.Scene {
     }
 
     update(time, delta) {
-        if (this.isGameOver) return;
-        if (this.damageBuff>1&&time>this.damageBuffEndTime){this.damageBuff=1;this.buffText.setText('');}
-        else if(this.damageBuff>1){this.buffText.setText('x'+this.damageBuff+' DMG '+Math.ceil((this.damageBuffEndTime-time)/1000)+'s');}
+        if (this.isGameOver || this.isPaused) return;
+        if (this.damageBuff>this.baseDamageBuff&&time>this.damageBuffEndTime){this.damageBuff=this.baseDamageBuff;this.buffText.setText('');}
+        else if(this.damageBuff>this.baseDamageBuff){this.buffText.setText('x'+this.damageBuff+' DMG '+Math.ceil((this.damageBuffEndTime-time)/1000)+'s');}
         if (this.isShooting && this.lastPointer.y < CONFIG.GAME_HEIGHT-56) this.shoot(this.lastPointer.x, this.lastPointer.y);
         for (var i=this.enemies.length-1;i>=0;i--) { if(this.enemies[i]) this.enemies[i].update(time,delta); }
         for (var j=this.projectiles.length-1;j>=0;j--) { if(this.projectiles[j]) this.projectiles[j].update(); }
         // Chain shot pairs — draw chain and apply chain damage
         if (this.chainShotPairs && this.chainShotPairs.length > 0) { this.updateChainShots(); }
+        // Toxic aura: passive damage to all enemies
+        if (this.toxicAuraDmg > 0 && this.waveInProgress) {
+            this._toxicTimer = (this._toxicTimer || 0) + delta;
+            if (this._toxicTimer >= 1000) {
+                this._toxicTimer -= 1000;
+                for (var ti = 0; ti < this.enemies.length; ti++) {
+                    if (this.enemies[ti] && !this.enemies[ti].isDead) this.enemies[ti].takeDamage(this.toxicAuraDmg, false);
+                }
+            }
+        }
+        // Orbit shards: spinning orbs around the castle
+        if (this.orbitObjects && this.orbitObjects.length > 0) {
+            this.orbitAngle += delta * 0.0022;
+            this._updateOrbitShards(time);
+        }
+        // Chaos bolt: auto-fire at random enemy every 2 sec
+        if (this.chaosBoltActive && this.enemies.length > 0) {
+            this._chaosTimer = (this._chaosTimer || 0) + delta;
+            if (this._chaosTimer >= 2000) {
+                this._chaosTimer -= 2000;
+                this._fireChaosShot();
+            }
+        }
+        // Mage auto-attacks
+        if (this.activeMages && this.activeMages.length > 0 && this.enemies.length > 0) {
+            this._updateMageAutoAttacks(time, delta);
+        }
         // Mana regen
         if (this.mana < this.maxMana) {
             this.mana = Math.min(this.maxMana, this.mana + this.manaRegenRate * delta / 1000);
             this.updateManaBar();
         }
-        // Magic button overlays: cooldown OR not enough mana
-        for (var k=0;k<this.magicButtons.length;k++) {
-            var b=this.magicButtons[k];
-            var onCd = time < this.magicCooldowns[b.magicType];
-            var noMana = this.mana < ((CONFIG.MAGIC[b.magicType] && CONFIG.MAGIC[b.magicType].manaCost) || 0);
+        // Mage button overlays: cooldown OR not enough mana
+        for (var k=0;k<this.mageButtons.length;k++) {
+            var b=this.mageButtons[k];
+            var st2=this.mageStates[b.mageKey];
+            if (!st2) continue;
+            var mgCfg2=CONFIG.MAGES&&CONFIG.MAGES[b.mageKey], ab2=mgCfg2&&mgCfg2.abilities[b.abilityIdx];
+            if (!ab2) continue;
+            var onCd = time < st2.abilityCooldowns[b.abilityIdx];
+            var noMana = this.mana < (ab2.manaCost || 0);
             b.cooldownOverlay.setVisible(onCd || noMana);
-            // Cooldown bar and countdown timer
             if (b.cdBar) {
                 if (onCd) {
-                    var rem = Math.max(0, this.magicCooldowns[b.magicType] - time);
-                    var totalCd = Math.floor(((CONFIG.MAGIC[b.magicType] && CONFIG.MAGIC[b.magicType].cooldown) || 5000) * (this.magicCdMult || 1));
-                    var progress = 1 - rem / totalCd; // 0=just started, 1=ready
-                    b.cdBar.setDisplaySize(Math.round(42 * progress), 4);
+                    var rem = Math.max(0, st2.abilityCooldowns[b.abilityIdx] - time);
+                    var totalCd = Math.floor(ab2.cooldown * (this.magicCdMult || 1));
+                    var progress = 1 - rem / totalCd;
+                    b.cdBar.setDisplaySize(Math.round(b.btnW * progress), 4);
                     if (b.cdText) b.cdText.setText(Math.ceil(rem / 1000) + 's');
                 } else {
                     b.cdBar.setDisplaySize(0, 4);
@@ -1143,6 +1342,18 @@ class GameScene extends Phaser.Scene {
         saveGameProgress();
     }
 
+    saveRunRecord() {
+        var prog = window.gameProgress || {};
+        if (!prog.bestWavePerLevel) prog.bestWavePerLevel = {};
+        if (this.currentWave > 0 && (!prog.bestWavePerLevel[this.currentLevel] || this.currentWave > prog.bestWavePerLevel[this.currentLevel])) {
+            prog.bestWavePerLevel[this.currentLevel] = this.currentWave;
+        }
+        prog.gold = (prog.gold || 0) + (this.runGoldEarned || 0);
+        this.runGoldEarned = 0; // prevent double-saving
+        window.gameProgress = prog;
+        saveGameProgress();
+    }
+
     // ==============================================
     // MANA BAR
     // ==============================================
@@ -1181,6 +1392,13 @@ class GameScene extends Phaser.Scene {
 
     isPerkRelevant(p) {
         var t = p.type;
+        // Min level gate for late-game perks
+        if (p.minLevel && (this.rogueLevel || 0) < p.minLevel) return false;
+        // Projectile cap: hide multi-shot perks when already at max for current level
+        var maxExtra = this.getMaxProjectiles() - 1;
+        var curExtra = (this.ammoEffects ? this.ammoEffects.multi : 0)
+            + (this.boomerangTriple || 0) + (this.crossbowBarrage || 0);
+        if ((t === 'ammoMulti' || t === 'boomerangTriple' || t === 'crossbowBarrage') && curExtra >= maxExtra) return false;
         // Weapon-specific perks — only show for the currently active weapon
         var cw = this.currentWeapon;
         if (t === 'plasmaExtraBounce' && cw !== 'PLASMA' && cw !== 'BALLISTA') return false;
@@ -1194,10 +1412,10 @@ class GameScene extends Phaser.Scene {
         if (t === 'chainShot'         && cw !== 'CANNON') return false;
         if (t === 'boomerangTriple'   && cw !== 'BOOMERANG') return false;
         if (t === 'crossbowBarrage'   && cw !== 'CROSSBOW') return false;
-        // Magic-specific perks — only if magic type is in active loadout
-        if (t === 'windPush'          && this.activeMagic.indexOf('WIND') === -1) return false;
-        if (t === 'freezeExtend'      && this.activeMagic.indexOf('FREEZE') === -1) return false;
-        if (t === 'healPower'         && this.activeMagic.indexOf('HEAL') === -1) return false;
+        // Mage-specific perks — only if mage is in active loadout
+        if (t === 'windPush'     && this.activeMages.indexOf('AEROMANCER') === -1) return false;
+        if (t === 'freezeExtend' && this.activeMages.indexOf('CRYOMANCER') === -1) return false;
+        if (t === 'healPower'    && this.activeMages.indexOf('AEROMANCER') === -1 && this.activeMages.indexOf('CRYOMANCER') === -1) return false;
         return true;
     }
 
@@ -1328,7 +1546,10 @@ class GameScene extends Phaser.Scene {
         var wk;
         switch(type) {
             case 'allDamage':
-                for (wk in this.weaponStates) this.weaponStates[wk].damage = Math.max(1, Math.floor(this.weaponStates[wk].damage * (1 + val)));
+                for (wk in this.weaponStates) {
+                    var d = this.weaponStates[wk].damage;
+                    this.weaponStates[wk].damage = Math.max(d + 1, Math.round(d * (1 + val)));
+                }
                 break;
             case 'allFireRate':
                 for (wk in this.weaponStates) this.weaponStates[wk].fireRate = Math.max(50, Math.floor(this.weaponStates[wk].fireRate * (1 - val)));
@@ -1351,8 +1572,9 @@ class GameScene extends Phaser.Scene {
             case 'castleHp':
                 this.maxCastleHp += val; this.castleHp += val; this.updateHpText();
                 break;
-            case 'castleRegen':
-                this.castleRegen += val;
+            case 'castleHpNow':
+                this.castleHp = Math.min(this.maxCastleHp, this.castleHp + val);
+                this.updateHpText();
                 break;
             case 'castleArmor':
                 this.armorReduction = Math.min(0.7, (this.armorReduction || 0) + val);
@@ -1442,6 +1664,40 @@ class GameScene extends Phaser.Scene {
             case 'ammoMulti':
                 this.ammoEffects.multi = (this.ammoEffects.multi || 0) + val;
                 break;
+            // Late-game perks
+            case 'bountyKill':
+                this.bountyKillGold = (this.bountyKillGold || 0) + val;
+                break;
+            case 'orbitShards':
+                this._addOrbitShard(Math.round(val));
+                break;
+            case 'chaosBolt':
+                this.chaosBoltActive = true;
+                break;
+            case 'deathNova':
+                this.deathNovaPercent = (this.deathNovaPercent || 0) + val;
+                break;
+            case 'cursedRounds':
+                this.cursedRoundsValue = (this.cursedRoundsValue || 0) + val;
+                break;
+            case 'berserker':
+                this.berserkerBonus = (this.berserkerBonus || 0) + val;
+                break;
+            case 'adrenaline':
+                this.adrenalinePerk = true;
+                break;
+            case 'voidPierce':
+                this.voidPierce = true;
+                break;
+            case 'explosiveDeath':
+                this.explosiveDeathValue = (this.explosiveDeathValue || 0) + val;
+                break;
+            case 'toxicAura':
+                this.toxicAuraDmg = (this.toxicAuraDmg || 0) + val;
+                break;
+            case 'soulbound':
+                this.soulboundCharges = (this.soulboundCharges || 0) + Math.round(val);
+                break;
         }
         this.showMessage('✨ ' + perk.name + '!', '#cc88ee');
         window.sfx.purchase();
@@ -1480,10 +1736,6 @@ class GameScene extends Phaser.Scene {
             case 'BERSERK_HORDE':
                 this.waveGoldMult = ev.goldMult || 1.8;
                 break;
-            case 'CASTLE_REPAIR':
-                this.castleHp = Math.min(this.maxCastleHp, this.castleHp + (ev.heal || 50)); this.updateHpText();
-                this.showMessage('+' + (ev.heal || 50) + ' HP!', '#44cc88');
-                break;
             case 'ANCIENT_SCROLL':
                 this.pendingRoguePicks++;
                 break;
@@ -1503,6 +1755,115 @@ class GameScene extends Phaser.Scene {
         var desc = this.add.text(W/2, H/2+10, ev.desc, {fontSize:'7px',color:'#c8b8a0',fontFamily:FONT}).setOrigin(0.5).setDepth(161);
         var els = [bg, title, desc];
         this.tweens.add({targets:els, alpha:0, delay:2800, duration:700, onComplete:function(){for(var i=0;i<els.length;i++) els[i].destroy();}});
+    }
+
+    _addOrbitShard(count) {
+        var totalExisting = this.orbitObjects.length;
+        for (var i = 0; i < count; i++) {
+            var totalAfter = totalExisting + i + 1;
+            var baseAngle = ((totalExisting + i) / Math.max(1, totalAfter)) * Math.PI * 2;
+            var g = this.add.graphics().setDepth(55);
+            this.orbitObjects.push({ gfx: g, baseAngle: baseAngle, hitCooldowns: {} });
+        }
+        this.orbitShardsCount += count;
+    }
+
+    _updateOrbitShards(time) {
+        var cx = CONFIG.CASTLE.x, cy = CONFIG.CASTLE.y;
+        var orbitR = 75;
+        var n = this.orbitObjects.length;
+        for (var oi = 0; oi < n; oi++) {
+            var orb = this.orbitObjects[oi];
+            var a = orb.baseAngle + this.orbitAngle;
+            var ox = cx + Math.cos(a) * orbitR;
+            var oy = cy + Math.sin(a) * orbitR;
+            orb.gfx.clear();
+            orb.gfx.fillStyle(0x4488ff, 0.9); orb.gfx.fillCircle(ox, oy, 7);
+            orb.gfx.lineStyle(2, 0x88ccff, 0.7); orb.gfx.strokeCircle(ox, oy, 9);
+            // Damage trail dot
+            orb.gfx.fillStyle(0x88ccff, 0.3);
+            orb.gfx.fillCircle(cx + Math.cos(a - 0.15) * orbitR, cy + Math.sin(a - 0.15) * orbitR, 4);
+            // Hit enemies within radius (use en.uid so cooldown is stable when array shifts)
+            for (var ei = 0; ei < this.enemies.length; ei++) {
+                var en = this.enemies[ei];
+                if (!en || en.isDead) continue;
+                var dx = en.x - ox, dy = en.y - oy;
+                if (dx*dx + dy*dy < 18*18) {
+                    var eid = en.uid;
+                    if (!orb.hitCooldowns[eid] || time > orb.hitCooldowns[eid]) {
+                        orb.hitCooldowns[eid] = time + 600;
+                        var orbitDmg = Math.max(5, Math.floor(this.weaponStates[this.currentWeapon].damage * this.damageBuff * 0.35));
+                        en.takeDamage(orbitDmg, false);
+                    }
+                }
+            }
+        }
+    }
+
+    _fireChaosShot() {
+        var alive = [];
+        for (var i = 0; i < this.enemies.length; i++) {
+            if (this.enemies[i] && !this.enemies[i].isDead) alive.push(this.enemies[i]);
+        }
+        if (alive.length === 0) return;
+        var target = alive[Math.floor(Math.random() * alive.length)];
+        var tx = target.x, ty = target.y;
+        var cx = this.crossbowX, cy = this.crossbowY;
+        var st = this.weaponStates[this.currentWeapon];
+        var dmg = Math.max(1, Math.floor(st.damage * this.damageBuff * 0.7));
+        this.projectiles.push(new Projectile(this, cx, cy, tx, ty, dmg, st.speed, this.currentWeapon, st));
+        // Small purple flash
+        var a = Phaser.Math.Angle.Between(cx, cy, tx, ty);
+        var fl = this.add.circle(cx + Math.cos(a) * 18, cy + Math.sin(a) * 18, 5, 0xaa44ff, 0.8).setDepth(50);
+        this.tweens.add({ targets: fl, alpha: 0, scaleX: 2.5, scaleY: 2.5, duration: 180, onComplete: function() { fl.destroy(); } });
+    }
+
+    _updateMageAutoAttacks(time, delta) {
+        var cx = CONFIG.CASTLE.x, cy = CONFIG.CASTLE.y;
+        for (var mi = 0; mi < this.activeMages.length; mi++) {
+            var mageKey = this.activeMages[mi];
+            var mgCfg = CONFIG.MAGES && CONFIG.MAGES[mageKey];
+            if (!mgCfg || !mgCfg.autoAttack) continue;
+            var st = this.mageStates[mageKey];
+            if (!st) continue;
+            var aa = mgCfg.autoAttack;
+            if (time - st.lastAutoTime < aa.rate) continue;
+            // Find nearest alive non-boss-immune enemy within range
+            var target = null, minDist2 = aa.range * aa.range;
+            for (var ei = 0; ei < this.enemies.length; ei++) {
+                var en = this.enemies[ei];
+                if (!en || en.isDead) continue;
+                var dx = en.x - cx, dy = en.y - cy;
+                var d2 = dx*dx + dy*dy;
+                if (d2 < minDist2) { minDist2 = d2; target = en; }
+            }
+            if (!target) continue;
+            st.lastAutoTime = time;
+            this._fireMageAutoAttack(mageKey, mgCfg, target);
+        }
+    }
+
+    _fireMageAutoAttack(mageKey, mgCfg, target) {
+        var self = this, aa = mgCfg.autoAttack;
+        var cx = CONFIG.CASTLE.x, cy = CONFIG.CASTLE.y;
+        var tx = target.x, ty = target.y;
+        // Create a small colored orb that flies to the target
+        var dot = this.add.circle(cx, cy, 5, aa.color || 0xaaaaff, 0.9).setDepth(48);
+        this.tweens.add({
+            targets: dot, x: tx, y: ty, duration: 220, ease: 'Linear',
+            onComplete: function() {
+                dot.destroy();
+                if (!target || target.isDead) return;
+                var dmg = Math.floor((aa.damage || 8) * self.magicDamageMult);
+                target.takeDamage(dmg, true);
+                if (aa.pushback) target.pushBack(0, aa.pushback);
+                if (aa.slowDuration && aa.slowPercent) target.applySlow(aa.slowDuration, 1 - aa.slowPercent);
+                if (aa.burnTicks && aa.burnDamagePercent) target.applyBurn(aa.burnTicks, aa.burnDamagePercent);
+                // Small impact flash
+                var fl = self.add.circle(target.x, target.y, 8, aa.color || 0xaaaaff, 0.6).setDepth(55);
+                self.tweens.add({targets: fl, alpha: 0, scale: 2, duration: 180, onComplete: function(){fl.destroy();}});
+            }
+        });
     }
 
     triggerMeteorStorm() {

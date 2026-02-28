@@ -39,7 +39,7 @@ class MenuScene extends Phaser.Scene {
         this.container = this.add.container(0, 0);
         // Reset loadout picker state
         this.ldWeapons = null;
-        this.ldMagic = null;
+        this.ldMages = null;
         this.ldLevelNum = null;
         this.showMainMenu();
     }
@@ -135,7 +135,7 @@ class MenuScene extends Phaser.Scene {
                 (function(ln) {
                     btn.on('pointerdown', function() {
                         self.ldWeapons = null;
-                        self.ldMagic = null;
+                        self.ldMages = null;
                         self.showLoadoutPicker(ln);
                     });
                 })(levelNum);
@@ -427,7 +427,7 @@ class MenuScene extends Phaser.Scene {
     }
 
     // =============================================
-    // LOADOUT PICKER — before starting a level
+    // LOADOUT PICKER — tower-themed loadout screen
     // =============================================
     showLoadoutPicker(levelNum) {
         this.clearContainer();
@@ -436,166 +436,256 @@ class MenuScene extends Phaser.Scene {
         if (!prog.ownedWeapons) prog.ownedWeapons = ['CROSSBOW'];
 
         this.ldLevelNum = levelNum;
-        var LC = CONFIG.LOADOUT || { defaultWeaponSlots: 3, defaultMagicSlots: 3, maxSlots: 5 };
-        var megaKills = prog.megaBossKills || 0;
-        var numSlots = Math.min(LC.maxSlots, LC.defaultWeaponSlots + megaKills);
-        this.ldNumSlots = numSlots;
+        var LC = CONFIG.LOADOUT || { defaultWeaponSlots: 1, defaultMageSlots: 2, maxMageSlots: 4 };
+        var weaponSlots = 1; // Always 1 weapon
+        var mageSlots = LC.defaultMageSlots || 2;
+        if (!prog.ownedMages) prog.ownedMages = ['AEROMANCER'];
 
-        // Initialize loadout arrays if first time entering
+        // Initialize loadout arrays
         if (!this.ldWeapons) {
-            var saved = prog.loadout || { weapons: ['CROSSBOW'], magic: ['WIND', 'FREEZE', 'LIGHTNING'] };
-            this.ldWeapons = saved.weapons.slice();
-            this.ldMagic = saved.magic.slice();
+            var saved = prog.loadout || { weapons: ['CROSSBOW'], mages: ['AEROMANCER', 'CRYOMANCER'] };
+            this.ldWeapons = saved.weapons.slice(0, weaponSlots);
+            this.ldMages   = (saved.mages || []).slice(0, mageSlots);
         }
-        // Ensure arrays have exactly numSlots entries
-        while (this.ldWeapons.length < numSlots) this.ldWeapons.push(null);
-        this.ldWeapons = this.ldWeapons.slice(0, numSlots);
-        while (this.ldMagic.length < numSlots) this.ldMagic.push(null);
-        this.ldMagic = this.ldMagic.slice(0, numSlots);
-        // Remove weapons no longer owned
+        while (this.ldWeapons.length < weaponSlots) this.ldWeapons.push(null);
+        this.ldWeapons = this.ldWeapons.slice(0, weaponSlots);
+        while (this.ldMages.length < mageSlots) this.ldMages.push(null);
+        this.ldMages = this.ldMages.slice(0, mageSlots);
+        // Validate owned weapons
         for (var ni = 0; ni < this.ldWeapons.length; ni++) {
-            if (this.ldWeapons[ni] && prog.ownedWeapons.indexOf(this.ldWeapons[ni]) === -1) {
-                this.ldWeapons[ni] = null;
-            }
+            if (this.ldWeapons[ni] && prog.ownedWeapons.indexOf(this.ldWeapons[ni]) === -1) this.ldWeapons[ni] = null;
         }
-        // Remove magic not owned
-        var ownedMagicCheck = prog.ownedMagic || ['WIND', 'FREEZE', 'LIGHTNING', 'HEAL'];
-        for (var mi3 = 0; mi3 < this.ldMagic.length; mi3++) {
-            if (this.ldMagic[mi3] && ownedMagicCheck.indexOf(this.ldMagic[mi3]) === -1) {
-                this.ldMagic[mi3] = null;
-            }
+        // Validate owned mages
+        for (var nj = 0; nj < this.ldMages.length; nj++) {
+            if (this.ldMages[nj] && prog.ownedMages.indexOf(this.ldMages[nj]) === -1) this.ldMages[nj] = null;
         }
 
         var level = CONFIG.LEVELS[levelNum];
-        this.container.add(this.add.text(W/2, 52, 'ЭКИПИРОВКА — ' + (level ? level.name : 'Level ' + levelNum), {
-            fontSize: '10px', color: '#f0c866', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 3
+        var levelIcon = level ? level.icon : '⚔️';
+        var levelName = level ? level.name : ('Level ' + levelNum);
+
+        // === TITLE ===
+        this.container.add(this.add.text(W/2, 26, 'СНАРЯЖЕНИЕ', {
+            fontSize: '14px', color: '#f0c866', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 4
         }).setOrigin(0.5));
 
-        if (numSlots > 3) {
-            this.container.add(this.add.text(W/2, 70, '★ Открыто слотов: ' + numSlots + ' (мегабоссы: ' + megaKills + ')', {
-                fontSize: '6px', color: '#cc88ee', fontFamily: FONT
+        this.container.add(this.add.text(W/2, 46, '🔮 Слотов магов: ' + mageSlots, {
+            fontSize: '6px', color: '#cc88ee', fontFamily: FONT
+        }).setOrigin(0.5));
+
+        // ============================================================
+        // CENTRAL TOWER GRAPHIC
+        // ============================================================
+        var tx = W / 2, ty = 250;
+        var tg = this.add.graphics();
+        // Tower base shadow
+        tg.fillStyle(0x000000, 0.3); tg.fillRect(tx - 38, ty + 55, 76, 8);
+        // Tower body
+        tg.fillStyle(0x2e3040, 1); tg.fillRect(tx - 38, ty - 80, 76, 138);
+        tg.fillStyle(0x3a3c50, 1); tg.fillRect(tx - 34, ty - 76, 68, 130);
+        // Stone rows
+        tg.lineStyle(1, 0x22232e, 0.7);
+        for (var ri = 0; ri < 5; ri++) {
+            tg.beginPath(); tg.moveTo(tx - 34, ty - 52 + ri * 28);
+            tg.lineTo(tx + 34, ty - 52 + ri * 28); tg.strokePath();
+        }
+        // Stone brick alternating pattern
+        tg.lineStyle(1, 0x22232e, 0.4);
+        for (var bri = 0; bri < 5; bri++) {
+            var offset = bri % 2 === 0 ? 0 : 17;
+            for (var bci = 0; bci < 2; bci++) {
+                tg.beginPath();
+                tg.moveTo(tx - 34 + offset + bci * 34, ty - 52 + bri * 28);
+                tg.lineTo(tx - 34 + offset + bci * 34, ty - 52 + (bri + 1) * 28);
+                tg.strokePath();
+            }
+        }
+        // Crenellations (battlements)
+        for (var cbi = 0; cbi < 5; cbi++) {
+            var cbx = tx - 34 + cbi * 17;
+            if (cbi % 2 === 0) {
+                tg.fillStyle(0x3a3c50, 1); tg.fillRect(cbx, ty - 94, 14, 18);
+                tg.lineStyle(1, 0x22232e, 0.6);
+                tg.strokeRect(cbx, ty - 94, 14, 18);
+            }
+        }
+        // Door arch
+        tg.fillStyle(0x120a06, 1); tg.fillRect(tx - 14, ty + 28, 28, 34);
+        tg.fillStyle(0x1a0e0a, 1);
+        tg.fillTriangle(tx - 14, ty + 28, tx + 14, ty + 28, tx, ty + 14);
+        // Door studs
+        tg.fillStyle(0x6a4a2a, 0.8);
+        tg.fillRect(tx - 12, ty + 30, 4, 4); tg.fillRect(tx + 8, ty + 30, 4, 4);
+        tg.fillRect(tx - 12, ty + 40, 4, 4); tg.fillRect(tx + 8, ty + 40, 4, 4);
+        // Main window (glowing)
+        tg.fillStyle(0x998844, 0.3); tg.fillRect(tx - 12, ty - 50, 24, 24);
+        tg.fillStyle(0xddcc66, 0.5); tg.fillRect(tx - 9, ty - 47, 18, 18);
+        tg.lineStyle(2, 0xaa8833, 0.8); tg.strokeRect(tx - 12, ty - 50, 24, 24);
+        // Cross window divider
+        tg.lineStyle(1, 0x333322, 0.9);
+        tg.lineBetween(tx, ty - 50, tx, ty - 26);
+        tg.lineBetween(tx - 12, ty - 38, tx + 12, ty - 38);
+        // Small side windows
+        tg.fillStyle(0x887733, 0.4); tg.fillRect(tx - 30, ty - 18, 10, 14);
+        tg.fillRect(tx + 20, ty - 18, 10, 14);
+        tg.lineStyle(1, 0x6a5a22, 0.6);
+        tg.strokeRect(tx - 30, ty - 18, 10, 14); tg.strokeRect(tx + 20, ty - 18, 10, 14);
+        // Flag pole
+        tg.fillStyle(0x707080, 1); tg.fillRect(tx - 1, ty - 94, 2, -28);
+        // Flag
+        tg.fillStyle(0xcc3333, 1); tg.fillTriangle(tx + 1, ty - 122, tx + 22, ty - 113, tx + 1, ty - 104);
+        tg.fillStyle(0xeeee44, 1); tg.fillCircle(tx + 8, ty - 113, 3);
+        // Outer glow border
+        tg.lineStyle(1, 0xf0c866, 0.18); tg.strokeRect(tx - 40, ty - 96, 80, 152);
+        this.container.add(tg);
+
+        // Level label below tower
+        this.container.add(this.add.text(tx, ty + 72, levelIcon + ' ' + levelName, {
+            fontSize: '7px', color: '#c8b898', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 2
+        }).setOrigin(0.5));
+
+        // ============================================================
+        // WEAPON SLOT (left side)
+        // ============================================================
+        var wCenterX = 160, wTopY = ty - 60;
+        this.container.add(this.add.text(wCenterX, wTopY - 20, '⚔️ ОРУЖИЕ', {
+            fontSize: '8px', color: '#ee9944', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 2
+        }).setOrigin(0.5));
+
+        var wt = this.ldWeapons[0];
+        var wCfg = wt ? CONFIG.WEAPONS[wt] : null;
+        var wSlotW = 150, wSlotH = 90;
+        var wxl = wCenterX - wSlotW / 2, wyt = wTopY;
+
+        var wSlotBg = this.add.graphics();
+        wSlotBg.fillStyle(0x1a0e20, 0.88); wSlotBg.fillRect(wxl, wyt, wSlotW, wSlotH);
+        wSlotBg.lineStyle(2, wt ? 0xf0c866 : 0x4a3a2a, 0.85); wSlotBg.strokeRect(wxl, wyt, wSlotW, wSlotH);
+        if (wt) { wSlotBg.lineStyle(1, 0xf0c866, 0.2); wSlotBg.strokeRect(wxl + 2, wyt + 2, wSlotW - 4, wSlotH - 4); }
+        this.container.add(wSlotBg);
+
+        if (wt) {
+            this.container.add(this.add.text(wCenterX, wyt + 32, wCfg.icon, {fontSize: '28px'}).setOrigin(0.5));
+            this.container.add(this.add.text(wCenterX, wyt + 62, wCfg.name, {
+                fontSize: '6px', color: '#d4c4a4', fontFamily: FONT
+            }).setOrigin(0.5));
+        } else {
+            this.container.add(this.add.text(wCenterX, wyt + wSlotH / 2, '[ выбрать\nоружие ]', {
+                fontSize: '7px', color: '#666655', fontFamily: FONT, align: 'center'
             }).setOrigin(0.5));
         }
+        var wBtn = this.add.rectangle(wCenterX, wyt + wSlotH / 2, wSlotW, wSlotH, 0x000000, 0).setInteractive({useHandCursor: true});
+        wBtn.on('pointerdown', function() { self.openWeaponSelector(0); });
+        this.container.add(wBtn);
 
-        // Section headers
-        this.container.add(this.add.text(W/4, 86, '⚔️ ОРУЖИЯ', {fontSize: '8px', color: '#ee9944', fontFamily: FONT}).setOrigin(0.5));
-        this.container.add(this.add.text(3*W/4, 86, '✨ МАГИЯ', {fontSize: '8px', color: '#8888ee', fontFamily: FONT}).setOrigin(0.5));
+        // ============================================================
+        // MAGE SLOTS (right side)
+        // ============================================================
+        var mCenterX = W - 200;
+        this.container.add(this.add.text(mCenterX, ty - 130, '🔮 МАГИ', {
+            fontSize: '8px', color: '#8888ee', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 2
+        }).setOrigin(0.5));
 
-        var slotW = 170, slotH = 38, slotGap = 6;
+        var mSlotW = 168, mSlotH = 76, mSlotGap = 6;
+        var totalMH = mageSlots * mSlotH + (mageSlots - 1) * mSlotGap;
+        var mStartY = ty - totalMH / 2 - 10;
+        var mxl = mCenterX - mSlotW / 2;
 
-        // Weapon slots
-        var wStartX = W/4 - slotW/2;
-        var wStartY = 100;
-        for (var wi = 0; wi < numSlots; wi++) {
-            var wsy = wStartY + wi * (slotH + slotGap);
-            var wt = this.ldWeapons[wi];
-            var wCfg = wt ? CONFIG.WEAPONS[wt] : null;
-
-            var wSlotBg = this.add.graphics();
-            wSlotBg.fillStyle(0x1a0e20, 0.8); wSlotBg.fillRect(wStartX, wsy, slotW, slotH);
-            wSlotBg.lineStyle(2, wt ? 0xf0c866 : 0x4a3a2a, 0.7); wSlotBg.strokeRect(wStartX, wsy, slotW, slotH);
-            this.container.add(wSlotBg);
-
-            var wSlotTxt = wt ? (wCfg.icon + ' ' + wCfg.name) : '[ нажми чтобы выбрать ]';
-            this.container.add(this.add.text(wStartX + slotW/2, wsy + slotH/2, wSlotTxt, {
-                fontSize: wt ? '8px' : '6px', color: wt ? '#d4c4a4' : '#666666', fontFamily: FONT
-            }).setOrigin(0.5));
-
-            var wSlotBtn = this.add.rectangle(wStartX + slotW/2, wsy + slotH/2, slotW, slotH, 0x000000, 0)
-                .setInteractive({useHandCursor: true});
-            (function(idx) {
-                wSlotBtn.on('pointerdown', function() { self.openWeaponSelector(idx); });
-            })(wi);
-            this.container.add(wSlotBtn);
-        }
-
-        // Magic slots
-        var mStartX = 3*W/4 - slotW/2;
-        var mStartY = 100;
-        for (var mi = 0; mi < numSlots; mi++) {
-            var msy = mStartY + mi * (slotH + slotGap);
-            var mt = this.ldMagic[mi];
-            var mCfg = mt ? CONFIG.MAGIC[mt] : null;
+        for (var mi = 0; mi < mageSlots; mi++) {
+            var msy = mStartY + mi * (mSlotH + mSlotGap);
+            var mgSlotKey = this.ldMages[mi];
+            var mgSlotCfg = mgSlotKey && CONFIG.MAGES ? CONFIG.MAGES[mgSlotKey] : null;
 
             var mSlotBg = this.add.graphics();
-            mSlotBg.fillStyle(0x0e1020, 0.8); mSlotBg.fillRect(mStartX, msy, slotW, slotH);
-            mSlotBg.lineStyle(2, mt ? 0x8888ee : 0x2a2a4a, 0.7); mSlotBg.strokeRect(mStartX, msy, slotW, slotH);
+            var mFillClr = mgSlotCfg ? 0x0e1030 : 0x08080e;
+            var mBdrClr = mgSlotCfg ? (mgSlotCfg.color || 0x6666ee) : 0x2a2a5a;
+            mSlotBg.fillStyle(mFillClr, 0.9); mSlotBg.fillRect(mxl, msy, mSlotW, mSlotH);
+            mSlotBg.lineStyle(mgSlotCfg ? 2 : 1, mBdrClr, mgSlotCfg ? 0.85 : 0.5);
+            mSlotBg.strokeRect(mxl, msy, mSlotW, mSlotH);
+            if (mgSlotCfg) {
+                mSlotBg.lineStyle(1, mBdrClr, 0.2);
+                mSlotBg.strokeRect(mxl+2, msy+2, mSlotW-4, mSlotH-4);
+            }
             this.container.add(mSlotBg);
 
-            var mSlotTxt = mt ? (mCfg.icon + ' ' + mCfg.name) : '[ нажми чтобы выбрать ]';
-            this.container.add(this.add.text(mStartX + slotW/2, msy + slotH/2, mSlotTxt, {
-                fontSize: mt ? '8px' : '6px', color: mt ? '#c8c8ff' : '#666666', fontFamily: FONT
+            if (mgSlotCfg) {
+                this.container.add(this.add.text(mxl+24, msy+mSlotH/2-8, mgSlotCfg.portrait || mgSlotCfg.icon, {fontSize:'22px'}).setOrigin(0.5));
+                this.container.add(this.add.text(mxl+52, msy+10, mgSlotCfg.name, {fontSize:'7px', color:'#c8d8ff', fontFamily:FONT}).setOrigin(0,0.5));
+                this.container.add(this.add.text(mxl+52, msy+26, mgSlotCfg.desc || '', {fontSize:'5px', color:'#7788aa', fontFamily:FONT, wordWrap:{width:mSlotW-58}}).setOrigin(0,0.5));
+                var abIcons = '';
+                for (var abI = 0; abI < mgSlotCfg.abilities.length; abI++) abIcons += mgSlotCfg.abilities[abI].icon;
+                this.container.add(this.add.text(mxl+52, msy+mSlotH-12, abIcons, {fontSize:'11px'}).setOrigin(0,0.5));
+            } else {
+                this.container.add(this.add.text(mCenterX, msy+mSlotH/2, '[ выбрать мага ]', {fontSize:'6px', color:'#444466', fontFamily:FONT}).setOrigin(0.5));
+            }
+
+            var mBtn = this.add.rectangle(mCenterX, msy+mSlotH/2, mSlotW, mSlotH, 0x000000, 0).setInteractive({useHandCursor:true});
+            (function(idx) { mBtn.on('pointerdown', function() { self.openMageSelector(idx); }); })(mi);
+            this.container.add(mBtn);
+        }
+
+        // ============================================================
+        // ARTIFACT STRIP (bottom)
+        // ============================================================
+        var equipped = prog.equippedArtifacts || [];
+        var artY = H - 92;
+        var artStripBg = this.add.graphics();
+        artStripBg.fillStyle(0x1a1206, 0.6); artStripBg.fillRect(W/2 - 130, artY - 4, 260, 52);
+        artStripBg.lineStyle(1, 0x6a4a2a, 0.4); artStripBg.strokeRect(W/2 - 130, artY - 4, 260, 52);
+        this.container.add(artStripBg);
+        this.container.add(this.add.text(W/2, artY + 4, 'АРТЕФАКТЫ', {
+            fontSize: '5px', color: '#8a6a42', fontFamily: FONT
+        }).setOrigin(0.5, 0));
+        for (var ai = 0; ai < CONFIG.MAX_EQUIPPED_ARTIFACTS; ai++) {
+            var artX2 = W/2 + (ai - Math.floor(CONFIG.MAX_EQUIPPED_ARTIFACTS / 2)) * 54;
+            var artBg2 = this.add.graphics();
+            artBg2.fillStyle(0x28180c, 0.8); artBg2.fillRect(artX2 - 20, artY + 16, 40, 32);
+            artBg2.lineStyle(1, equipped[ai] ? 0xf0c866 : 0x4a3a2a, equipped[ai] ? 0.7 : 0.4);
+            artBg2.strokeRect(artX2 - 20, artY + 16, 40, 32);
+            this.container.add(artBg2);
+            var eArt3 = equipped[ai] ? CONFIG.ARTIFACTS[equipped[ai]] : null;
+            this.container.add(this.add.text(artX2, artY + 32, eArt3 ? eArt3.icon : '—', {
+                fontSize: eArt3 ? '16px' : '10px', color: '#444444', fontFamily: FONT
             }).setOrigin(0.5));
-
-            var mSlotBtn = this.add.rectangle(mStartX + slotW/2, msy + slotH/2, slotW, slotH, 0x000000, 0)
-                .setInteractive({useHandCursor: true});
-            (function(idx) {
-                mSlotBtn.on('pointerdown', function() { self.openMagicSelector(idx); });
-            })(mi);
-            this.container.add(mSlotBtn);
         }
 
-        // Validation: require at least 1 weapon
-        var atLeastOneWeapon = false;
-        for (var vi = 0; vi < this.ldWeapons.length; vi++) {
-            if (this.ldWeapons[vi]) { atLeastOneWeapon = true; break; }
-        }
-        var allFilled = atLeastOneWeapon;
+        // ============================================================
+        // START + BACK buttons
+        // ============================================================
+        var atLeastOneWeapon = !!this.ldWeapons[0];
 
-        // Hint text
-        if (!allFilled) {
-            this.container.add(this.add.text(W/2, H - 100, 'Выберите хотя бы 1 оружие', {
-                fontSize: '7px', color: '#886644', fontFamily: FONT
-            }).setOrigin(0.5));
-        }
-
-        // START button
         var startBg = this.add.graphics();
-        startBg.fillStyle(allFilled ? 0x2a4a1a : 0x1a1a1a, 0.85);
-        startBg.fillRect(W/2 - 90, H - 82, 180, 38);
-        startBg.lineStyle(2, allFilled ? 0x6a9a3a : 0x333333, 0.8);
-        startBg.strokeRect(W/2 - 90, H - 82, 180, 38);
+        startBg.fillStyle(atLeastOneWeapon ? 0x2a4a1a : 0x151515, 0.9);
+        startBg.fillRect(W/2 - 95, H - 38, 190, 34);
+        startBg.lineStyle(2, atLeastOneWeapon ? 0x6a9a3a : 0x333333, 0.9);
+        startBg.strokeRect(W/2 - 95, H - 38, 190, 34);
         this.container.add(startBg);
-
-        this.container.add(this.add.text(W/2, H - 63, 'НАЧАТЬ ИГРУ', {
-            fontSize: '9px', color: allFilled ? '#aaee88' : '#555555', fontFamily: FONT
+        this.container.add(this.add.text(W/2, H - 21, atLeastOneWeapon ? 'НАЧАТЬ ИГРУ' : 'Выбери оружие', {
+            fontSize: '9px', color: atLeastOneWeapon ? '#aaee88' : '#665544', fontFamily: FONT
         }).setOrigin(0.5));
-
-        if (allFilled) {
-            var startBtn = this.add.rectangle(W/2, H - 63, 180, 38, 0x000000, 0).setInteractive({useHandCursor: true});
+        if (atLeastOneWeapon) {
+            var startBtn = this.add.rectangle(W/2, H - 21, 190, 34, 0x000000, 0).setInteractive({useHandCursor: true});
             startBtn.on('pointerdown', function() {
                 var finalWeapons = self.ldWeapons.filter(function(w) { return w !== null; });
-                var finalMagic = self.ldMagic.filter(function(m) { return m !== null; });
-                var loadout = { weapons: finalWeapons, magic: finalMagic };
+                var finalMages = self.ldMages.filter(function(m) { return m !== null; });
+                if (finalMages.length === 0) finalMages = ['AEROMANCER'];
+                var loadout = { weapons: finalWeapons, mages: finalMages };
                 prog.loadout = loadout;
                 window.gameProgress = prog;
                 saveGameProgress();
-                self.ldWeapons = null;
-                self.ldMagic = null;
+                self.ldWeapons = null; self.ldMages = null;
                 self.scene.start('GameScene', { level: levelNum, loadout: loadout });
             });
             this.container.add(startBtn);
         }
 
-        // Back to level select button
         var backBg = this.add.graphics();
-        backBg.fillStyle(0x4a1a0e, 0.7); backBg.fillRect(20, H-40, 80, 28);
-        backBg.lineStyle(1, 0x8a3a1a, 0.5); backBg.strokeRect(20, H-40, 80, 28);
+        backBg.fillStyle(0x4a1a0e, 0.7); backBg.fillRect(14, H - 38, 76, 28);
+        backBg.lineStyle(1, 0x8a3a1a, 0.5); backBg.strokeRect(14, H - 38, 76, 28);
         this.container.add(backBg);
-        var backBtn = this.add.rectangle(60, H-26, 80, 28, 0x000000, 0).setInteractive({useHandCursor: true});
-        backBtn.on('pointerdown', function() { self.ldWeapons = null; self.ldMagic = null; self.showLevelSelect(); });
+        var backBtn = this.add.rectangle(52, H - 24, 76, 28, 0x000000, 0).setInteractive({useHandCursor: true});
+        backBtn.on('pointerdown', function() { self.ldWeapons = null; self.ldMages = null; self.showLevelSelect(); });
         this.container.add(backBtn);
-        this.container.add(this.add.text(60, H-26, 'НАЗАД', {fontSize: '7px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5));
-
-        // Main menu button
-        var menuBg = this.add.graphics();
-        menuBg.fillStyle(0x1a1a3a, 0.7); menuBg.fillRect(W - 100, H-40, 80, 28);
-        menuBg.lineStyle(1, 0x4a4a8a, 0.5); menuBg.strokeRect(W - 100, H-40, 80, 28);
-        this.container.add(menuBg);
-        var menuBtn = this.add.rectangle(W - 60, H-26, 80, 28, 0x000000, 0).setInteractive({useHandCursor: true});
-        menuBtn.on('pointerdown', function() { self.ldWeapons = null; self.ldMagic = null; self.showMainMenu(); });
-        this.container.add(menuBtn);
-        this.container.add(this.add.text(W - 60, H-26, 'МЕНЮ', {fontSize: '7px', color: '#8888ee', fontFamily: FONT}).setOrigin(0.5));
+        this.container.add(this.add.text(52, H - 24, 'НАЗАД', {fontSize: '7px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5));
     }
 
     openWeaponSelector(slotIdx) {
@@ -685,87 +775,93 @@ class MenuScene extends Phaser.Scene {
         closeBtn.on('pointerdown', function() { for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy(); });
     }
 
-    openMagicSelector(slotIdx) {
+    openMageSelector(slotIdx) {
         var W = CONFIG.GAME_WIDTH, H = CONFIG.GAME_HEIGHT, self = this;
         var prog = this.prog;
-        if (!prog.ownedMagic) prog.ownedMagic = ['WIND'];
-        var gems = prog.gems || 0;
-        var allMagic = Object.keys(CONFIG.MAGIC);
+        if (!prog.ownedMages) prog.ownedMages = ['AEROMANCER'];
+        var allMages = Object.keys(CONFIG.MAGES || {});
         var elements = [];
 
         var ov = this.add.rectangle(W/2, H/2, W, H, 0x000000, 0.88).setDepth(200);
         elements.push(ov);
-        elements.push(this.add.text(W/2, 55, '✨ МАГИЯ — слот ' + (slotIdx + 1), {
+        elements.push(this.add.text(W/2, 36, '🔮 ВЫБОР МАГА — слот ' + (slotIdx + 1), {
             fontSize: '9px', color: '#8888ee', fontFamily: FONT, stroke: '#1a0e0a', strokeThickness: 3
         }).setOrigin(0.5).setDepth(201));
-        var gemsLabel2 = this.add.text(W/2, 72, '💎 ' + gems, {fontSize: '7px', color: '#66aaee', fontFamily: FONT}).setOrigin(0.5).setDepth(201);
-        elements.push(gemsLabel2);
+        elements.push(this.add.text(W/2, 56, 'Самоцветов: ' + (prog.gems || 0), {
+            fontSize: '7px', color: '#66aaee', fontFamily: FONT
+        }).setOrigin(0.5).setDepth(201));
 
-        var cols = 2, btnW = 220, btnH = 58, gap = 8;
+        var cols = 2, btnW = 230, btnH = 90, gap = 6;
         var totalW = cols * btnW + (cols - 1) * gap;
-        var sx = W/2 - totalW/2, sy = 86;
+        var sx = W/2 - totalW/2, sy = 68;
 
-        for (var i = 0; i < allMagic.length; i++) {
-            var mk = allMagic[i], mg = CONFIG.MAGIC[mk];
+        for (var i = 0; i < allMages.length; i++) {
+            var mk = allMages[i];
+            var mgCfg5 = CONFIG.MAGES[mk];
             var col = i % cols, row = Math.floor(i / cols);
             var bx = sx + col * (btnW + gap), by = sy + row * (btnH + gap);
-            var owned = prog.ownedMagic.indexOf(mk) !== -1 || (mg.gemCost === 0);
-            var selected = self.ldMagic[slotIdx] === mk;
-            var canAfford = owned || (mg.gemCost > 0 && gems >= mg.gemCost);
+            var selected = self.ldMages[slotIdx] === mk;
+            var owned = prog.ownedMages.indexOf(mk) !== -1;
+            var charColor = mgCfg5.color || 0x4444aa;
+            var gemCost = mgCfg5.unlockCost || 0;
 
             var mbg = this.add.graphics().setDepth(201);
-            var mFill = selected ? 0x1a1a3a : (owned ? 0x0e1020 : (canAfford ? 0x0a0e1a : 0x080808));
-            var mBdr = selected ? 0x8888ee : (owned ? 0x4444aa : (canAfford ? 0x2244aa : 0x222222));
-            mbg.fillStyle(mFill, 0.9); mbg.fillRect(bx, by, btnW, btnH);
-            mbg.lineStyle(owned ? 2 : 1, mBdr, owned ? 0.9 : 0.6); mbg.strokeRect(bx, by, btnW, btnH);
+            var mFill = selected ? 0x0c1230 : (owned ? 0x08090e : 0x0a0808);
+            mbg.fillStyle(mFill, 0.95); mbg.fillRect(bx, by, btnW, btnH);
+            mbg.lineStyle(selected ? 3 : 1, owned ? charColor : 0x444444, selected ? 1.0 : 0.55);
+            mbg.strokeRect(bx, by, btnW, btnH);
+            if (selected) { mbg.lineStyle(1, charColor, 0.25); mbg.strokeRect(bx+3, by+3, btnW-6, btnH-6); }
             elements.push(mbg);
 
-            elements.push(this.add.text(bx + 28, by + btnH/2, mg.icon, {fontSize: '18px'}).setOrigin(0.5).setDepth(202));
-            var nameColor2 = selected ? '#f0c866' : (owned ? '#c8c8ff' : (canAfford ? '#88aaff' : '#555555'));
-            elements.push(this.add.text(bx + 55, by + 10, (selected ? '✓ ' : '') + mg.name, {
-                fontSize: '8px', color: nameColor2, fontFamily: FONT
-            }).setDepth(202));
-            elements.push(this.add.text(bx + 55, by + 26, 'Мана: ' + mg.manaCost + '  КД: ' + (mg.cooldown/1000).toFixed(0) + 'с', {
-                fontSize: '6px', color: '#777788', fontFamily: FONT
-            }).setDepth(202));
+            elements.push(this.add.text(bx+32, by+btnH/2-8, mgCfg5.portrait || mgCfg5.icon, {fontSize:'26px'}).setOrigin(0.5).setDepth(202));
+            var nameClr = selected ? '#f0c866' : (owned ? '#c8d8ff' : '#888888');
+            elements.push(this.add.text(bx+62, by+9, (selected ? '✓ ' : '') + mgCfg5.name, {fontSize:'8px', color:nameClr, fontFamily:FONT}).setDepth(202));
+            elements.push(this.add.text(bx+62, by+26, mgCfg5.desc || '', {fontSize:'5px', color: owned ? '#7788aa' : '#555566', fontFamily:FONT, wordWrap:{width:btnW-68}}).setDepth(202));
+            // Ability icons
+            var abRow = '';
+            for (var abJ = 0; abJ < mgCfg5.abilities.length; abJ++) abRow += mgCfg5.abilities[abJ].icon;
+            elements.push(this.add.text(bx+62, by+btnH-20, abRow, {fontSize:'11px', color: owned ? '#aabbcc' : '#444444'}).setDepth(202));
 
-            if (!owned) {
-                var mCostStr = mg.gemCost > 0 ? ('💎 ' + mg.gemCost) : 'БЕСПЛАТНО';
-                elements.push(this.add.text(bx + 55, by + 40, canAfford ? ('Купить: ' + mCostStr) : ('Нужно: ' + mCostStr), {
-                    fontSize: '6px', color: canAfford ? '#66aaee' : '#884444', fontFamily: FONT
-                }).setDepth(202));
+            if (!owned && gemCost > 0) {
+                // Buy button
+                var buyBg = this.add.graphics().setDepth(202);
+                buyBg.fillStyle(0x2a2a0a, 0.9); buyBg.fillRect(bx+62, by+btnH-38, 100, 18);
+                buyBg.lineStyle(1, 0xddaa33, 0.7); buyBg.strokeRect(bx+62, by+btnH-38, 100, 18);
+                elements.push(buyBg);
+                elements.push(this.add.text(bx+112, by+btnH-29, '🔒 ' + gemCost + ' 💎 КУПИТЬ', {fontSize:'6px', color:'#f0c866', fontFamily:FONT}).setOrigin(0.5).setDepth(203));
             }
 
-            if (canAfford) {
-                var mbtn = this.add.rectangle(bx + btnW/2, by + btnH/2, btnW, btnH, 0x000000, 0)
-                    .setInteractive({useHandCursor: true}).setDepth(203);
-                elements.push(mbtn);
-                (function(magic, isOwned, cost) {
-                    mbtn.on('pointerdown', function() {
-                        if (!isOwned) {
-                            if ((prog.gems || 0) < cost) return;
-                            prog.gems -= cost;
-                            if (!prog.ownedMagic) prog.ownedMagic = ['WIND'];
-                            prog.ownedMagic.push(magic);
-                            window.gameProgress = prog;
-                            saveGameProgress();
-                        }
+            var mbtn = this.add.rectangle(bx+btnW/2, by+btnH/2, btnW, btnH, 0x000000, 0).setInteractive({useHandCursor:true}).setDepth(203);
+            elements.push(mbtn);
+            (function(mageKey2, isOwned, cost) {
+                mbtn.on('pointerdown', function() {
+                    if (!isOwned) {
+                        var gems = prog.gems || 0;
+                        if (gems < cost) { return; }
+                        prog.gems = gems - cost;
+                        if (!prog.ownedMages) prog.ownedMages = ['AEROMANCER'];
+                        prog.ownedMages.push(mageKey2);
+                        window.gameProgress = prog;
+                        saveGameProgress();
                         for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy();
-                        self.ldMagic[slotIdx] = magic;
-                        self.showLoadoutPicker(self.ldLevelNum);
-                    });
-                })(mk, owned, mg.gemCost || 0);
-            }
+                        self.openMageSelector(slotIdx);
+                        return;
+                    }
+                    for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy();
+                    self.ldMages[slotIdx] = mageKey2;
+                    self.showLoadoutPicker(self.ldLevelNum);
+                });
+            })(mk, owned, gemCost);
         }
 
-        // Cancel
+        // Cancel button
         var closeBg2 = this.add.graphics().setDepth(201);
-        closeBg2.fillStyle(0x4a1a0e, 0.8); closeBg2.fillRect(W/2 - 50, H - 50, 100, 28);
-        closeBg2.lineStyle(1, 0x8a3a1a, 0.5); closeBg2.strokeRect(W/2 - 50, H - 50, 100, 28);
+        closeBg2.fillStyle(0x4a1a0e, 0.8); closeBg2.fillRect(W/2-50, H-42, 100, 28);
+        closeBg2.lineStyle(1, 0x8a3a1a, 0.5); closeBg2.strokeRect(W/2-50, H-42, 100, 28);
         elements.push(closeBg2);
-        var closeBtn2 = this.add.rectangle(W/2, H - 36, 100, 28, 0x000000, 0).setInteractive({useHandCursor: true}).setDepth(203);
+        var closeBtn2 = this.add.rectangle(W/2, H-28, 100, 28, 0x000000, 0).setInteractive({useHandCursor:true}).setDepth(203);
         elements.push(closeBtn2);
-        elements.push(this.add.text(W/2, H - 36, 'ОТМЕНА', {fontSize: '6px', color: '#ee8866', fontFamily: FONT}).setOrigin(0.5).setDepth(202));
+        elements.push(this.add.text(W/2, H-28, 'ОТМЕНА', {fontSize:'6px', color:'#ee8866', fontFamily:FONT}).setOrigin(0.5).setDepth(202));
         closeBtn2.on('pointerdown', function() { for (var e = 0; e < elements.length; e++) if (elements[e] && elements[e].destroy) elements[e].destroy(); });
     }
 

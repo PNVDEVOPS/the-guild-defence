@@ -364,9 +364,9 @@ const CONFIG = {
             flyChangeInterval: 1200
         },
         BOSS: {
-            name: 'Дракон', hp: 800, speed: 28, reward: 200, damage: 22,
+            name: 'Дракон', hp: 800, speed: 28, reward: 200, damage: 12,
             size: 120, color: 0xff0000, moveType: 'boss_fly',
-            isBoss: true, canShoot: true, shootDamage: 20, shootRate: 3000,
+            isBoss: true, canShoot: true, shootDamage: 10, shootRate: 3000,
             flyZoneMinX: 200, flyZoneMaxX: 920,
             flyZoneMinY: 70, flyZoneMaxY: 430,
             flyChangeInterval: 1000,
@@ -375,10 +375,10 @@ const CONFIG = {
         },
         MEGA_BOSS: {
             name: 'Древний Дракон',
-            hp: 2500, speed: 35, reward: 500, damage: 45,
+            hp: 2500, speed: 35, reward: 500, damage: 22,
             size: 160, color: 0x660000, moveType: 'boss_fly',
             isBoss: true, canShoot: true,
-            shootDamage: 28, shootRate: 2500,
+            shootDamage: 14, shootRate: 2500,
             flyZoneMinX: 150, flyZoneMaxX: 930,
             flyZoneMinY: 60, flyZoneMaxY: 440,
             flyChangeInterval: 800,
@@ -388,20 +388,20 @@ const CONFIG = {
         },
         MEGA_GOLEM: {
             name: 'Мега Голем',
-            hp: 3000, speed: 15, reward: 600, damage: 80,
+            hp: 3000, speed: 15, reward: 600, damage: 40,
             size: 140, color: 0x554422, moveType: 'straight',
             isBoss: true, immuneToSlow: true, immuneToFreeze: true,
-            groundPound: true, groundPoundDamage: 50, groundPoundInterval: 5000, groundPoundRadius: 180,
+            groundPound: true, groundPoundDamage: 25, groundPoundInterval: 5000, groundPoundRadius: 180,
             icon: '🏔️'
         }
     },
 
     WAVE_CONFIG: {
-        baseEnemyCount: 7, enemiesPerWave: 3,
-        spawnDelayBase: 2000, spawnDelayMin: 600, spawnDelayReduction: 20,
-        hpMultiplier: 0.055, damageMultiplier: 0.022, speedMultiplier: 0.008,
-        bossHpMultiplier: 1.5, bossDamageMultiplier: 1.3,
-        eliteStartWave: 15, eliteChanceBase: 0.04, eliteChancePerWave: 0.003
+        baseEnemyCount: 9, enemiesPerWave: 4,
+        spawnDelayBase: 1500, spawnDelayMin: 300, spawnDelayReduction: 35,
+        hpMultiplier: 0.09, damageMultiplier: 0.038, speedMultiplier: 0.013,
+        bossHpMultiplier: 1.5, bossDamageMultiplier: 1.05,
+        eliteStartWave: 12, eliteChanceBase: 0.05, eliteChancePerWave: 0.004
     },
 
     // ==============================================
@@ -442,7 +442,7 @@ const CONFIG = {
         { id: 'MAGIC_POWER',    rarity: 'RARE',      name: 'Аркан Силы',           icon: '✨', desc: '+10% урон магии',              type: 'magicDamage',       value: 0.10 },
         { id: 'MAGIC_CD',       rarity: 'RARE',      name: 'Быстрые заклинания',  icon: '⏱️', desc: '-5% кулдаун магии',           type: 'magicCooldown',     value: 0.5 },
         { id: 'CASTLE_HP',      rarity: 'COMMON',    name: 'Укрепление стен',      icon: '🏰', desc: '+20 HP замка',                type: 'castleHp',          value: 20 },
-        { id: 'CASTLE_REGEN',   rarity: 'RARE',      name: 'Магический ремонт',    icon: '💚', desc: '+1 рег. HP/сек',              type: 'castleRegen',       value: 1 },
+        { id: 'CASTLE_SHARD',   rarity: 'RARE',      name: 'Осколок Замка',        icon: '🏰', desc: '+10 HP замка сразу',          type: 'castleHpNow',       value: 10 },
         { id: 'CASTLE_ARMOR',   rarity: 'EPIC',      name: 'Гранитная броня',      icon: '🛡️', desc: '-2% урон по замку',          type: 'castleArmor',       value: 0.2 },
         { id: 'PIERCE_SHOT',    rarity: 'RARE',      name: 'Пробойный выстрел',    icon: '🔵', desc: '+1 пробивание всех снарядов',   type: 'pierceAll',         value: 1 },
         { id: 'LONG_RANGE',     rarity: 'COMMON',    name: 'Дальнобойность',        icon: '↗️', desc: '+40% дальность снарядов',       type: 'projRange',         value: 0.4 },
@@ -469,17 +469,31 @@ const CONFIG = {
         { id: 'CHAIN_SHOT',     rarity: 'LEGENDARY', name: 'Книппель',             icon: '⛓️', desc: 'Пушка: два ядра на цепи вместо одного', type: 'chainShot', value: 1 },
         { id: 'BOOMERANG_TRIPLE',rarity:'EPIC',       name: 'Тройной бросок',       icon: '🪃', desc: 'Бумеранг: 3 снаряда за один бросок', type: 'boomerangTriple', value: 2 },
         { id: 'CROSSBOW_BARRAGE',rarity:'EPIC',       name: 'Шквал стрел',          icon: '🏹', desc: 'Арбалет: +3 стрелы веером за выстрел', type: 'crossbowBarrage', value: 3 },
-        // Universal projectile multipliers (super rare)
-        { id: 'MULTISHOT',      rarity: 'EPIC',      name: 'Мультивыстрел',        icon: '✦',  desc: '+3 доп. снаряда за выстрел',    type: 'ammoMulti',         value: 3 },
-        { id: 'BARRAGE',        rarity: 'LEGENDARY', name: 'Шквальный огонь',      icon: '🌟', desc: '+6 доп. снарядов за выстрел',   type: 'ammoMulti',         value: 6 },
+        // Universal projectile multipliers
+        { id: 'MULTISHOT',      rarity: 'RARE',      name: 'Мультивыстрел',        icon: '✦',  desc: '+3 доп. снаряда за выстрел',    type: 'ammoMulti',         value: 3 },
+        { id: 'BARRAGE',        rarity: 'EPIC',      name: 'Шквальный огонь',      icon: '🌟', desc: '+6 доп. снарядов за выстрел',   type: 'ammoMulti',         value: 6 },
         { id: 'MANA_ON_KILL',   rarity: 'COMMON',    name: 'Пожиратель Душ',      icon: '👻', desc: '+3 маны за каждого убитого врага',type: 'manaOnKill',       value: 3 },
         { id: 'GOLD_INTEREST',  rarity: 'EPIC',      name: 'Ростовщик',           icon: '🏦', desc: '+1% от накопленного золота сразу',type: 'goldInterest',     value: 0.01 },
         { id: 'ENEMY_SLOW_ALL', rarity: 'LEGENDARY', name: 'Тяжёлые Путы',       icon: '⛓️', desc: 'Все враги изначально замедлены на 5%', type: 'enemySlowAll', value: 0.05 },
-        // Снаряды-перки (стакаются)
+        // Снаряды-перки (стакаются) — высокий вес для частого появления
         { id: 'AMMO_ELECTRIC', rarity: 'COMMON',    name: 'Электроснаряд',     icon: '⚡', desc: '+1 цель цепи, +10% урон цепи',           type: 'ammoElectric', value: 1 },
         { id: 'AMMO_FIRE',     rarity: 'COMMON',    name: 'Огненный снаряд',   icon: '🔥', desc: '+1 тик горения, +10% урон огня',         type: 'ammoFire',     value: 1 },
         { id: 'AMMO_ICE',      rarity: 'COMMON',    name: 'Ледяной снаряд',    icon: '🧊', desc: '+10% замедление, +0.5с длительн.',       type: 'ammoIce',      value: 1 },
-        { id: 'AMMO_MULTI',    rarity: 'RARE',      name: 'Сдвоенный выстрел', icon: '✦',  desc: '+1 доп. снаряд за выстрел',              type: 'ammoMulti',    value: 1 },
+        { id: 'AMMO_MULTI',    rarity: 'COMMON',    name: 'Сдвоенный выстрел', icon: '✦',  desc: '+1 доп. снаряд за выстрел',              type: 'ammoMulti',    value: 1 },
+        // =====================
+        // ЛЕЙТ-ГЕЙМ ПЕРКИ (требуют rogueLevel)
+        // =====================
+        { id: 'BOUNTY_HUNTER',  rarity: 'EPIC',      name: 'Охотник за головами', icon: '💰', desc: 'Каждый убитый враг даёт +2 золота сверху',             type: 'bountyKill',     value: 2,    minLevel: 8 },
+        { id: 'ORBIT_SHARDS',   rarity: 'EPIC',      name: 'Орбитальные осколки', icon: '🔮', desc: '3 снаряда вращаются вокруг замка и бьют врагов',        type: 'orbitShards',    value: 3,    minLevel: 5 },
+        { id: 'CHAOS_BOLT',     rarity: 'RARE',      name: 'Хаотичный Залп',      icon: '🌀', desc: 'Каждые 2 сек случайный снаряд летит в случайного врага', type: 'chaosBolt',      value: 1,    minLevel: 8 },
+        { id: 'DEATH_NOVA',      rarity: 'LEGENDARY', name: 'Взрыв Агонии',      icon: '💀', desc: 'Смерть врага наносит 25% его макс. HP соседям (р.90)', type: 'deathNova',      value: 0.25, minLevel: 12 },
+        { id: 'CURSED_ROUNDS',   rarity: 'LEGENDARY', name: 'Проклятые Пули',    icon: '☠️', desc: '+4% тек. HP врага как доп. урон каждым снарядом',      type: 'cursedRounds',   value: 0.04, minLevel: 15 },
+        { id: 'BERSERKER',       rarity: 'EPIC',      name: 'Берсерк',           icon: '🪓', desc: 'Каждый убитый враг: +0.5% скорострельности до конца волны', type: 'berserker', value: 0.005, minLevel: 12 },
+        { id: 'ADRENALINE',      rarity: 'LEGENDARY', name: 'Адреналин',         icon: '❤️‍🔥', desc: 'При HP замка <30%: скорострельность x2',               type: 'adrenaline',     value: 1,    minLevel: 20 },
+        { id: 'VOID_PIERCE',     rarity: 'LEGENDARY', name: 'Разрыв Пустоты',    icon: '🌀', desc: 'Все снаряды пробивают бесконечно врагов',               type: 'voidPierce',     value: 1,    minLevel: 25 },
+        { id: 'EXPLOSIVE_DEATH', rarity: 'EPIC',      name: 'Цепная Гибель',     icon: '💥', desc: 'Убийство: 40% урона снаряда в радиусе 70 к соседям',   type: 'explosiveDeath', value: 0.4,  minLevel: 10 },
+        { id: 'TOXIC_AURA',      rarity: 'EPIC',      name: 'Ядовитая Аура',     icon: '☣️', desc: 'Все враги получают 2 ур./сек пока на экране',           type: 'toxicAura',      value: 2,    minLevel: 15 },
+        { id: 'SOULBOUND',       rarity: 'LEGENDARY', name: 'Оковы Душ',         icon: '⛓️', desc: 'Первые 3 смерти замка в этом забеге: поглощены (1 HP)', type: 'soulbound',      value: 3,    minLevel: 30 },
     ],
 
     // ==============================================
@@ -493,9 +507,83 @@ const CONFIG = {
     },
 
     // ==============================================
+    // МАГИ — 4 стихии, каждый со своими способностями
+    // unlockCost: 0 = доступен сразу, иначе цена в кристаллах
+    // autoAttack: пассивная атака при приближении врага
+    // abilities[0-2]: активные способности (Q/W/E для мага 1, A/S/D для мага 2)
+    // abilities[3]: ульта (R / F)
+    // ==============================================
+    MAGES: {
+        AEROMANCER: {
+            name: 'Аэромант', icon: '🌪️', color: 0x88ccff, portrait: '🌬️',
+            desc: 'Мастер воздуха и молний. Отталкивает врагов, вызывает вихри.',
+            unlockCost: 0,
+            autoAttack: { damage: 8, range: 280, rate: 1400, color: 0xaaddff, pushback: 18 },
+            abilities: [
+                { key: 'SQUALL',       name: 'Шквал воздуха',  icon: '💨', manaCost: 25, cooldown: 8000,
+                  desc: 'Воздушный поток по линии к курсору — урон и отбрасывание' },
+                { key: 'VORTEX',       name: 'Вихревой шторм', icon: '🌀', manaCost: 50, cooldown: 20000,
+                  desc: '3 вихря зигзагом по полю — урон и отбрасывание' },
+                { key: 'AERO_HEAL',    name: 'Исцеление',      icon: '💚', manaCost: 60, cooldown: 25000,
+                  desc: 'Разовое восстановление замка (+50 HP)' },
+                { key: 'LIGHTNING_ULT',name: 'Разряды молний', icon: '⚡', manaCost: 90, cooldown: 60000,
+                  isUlt: true, desc: 'Молнии поражают всех врагов на карте' },
+            ]
+        },
+        CRYOMANCER: {
+            name: 'Криомант', icon: '❄️', color: 0x00ccff, portrait: '🧊',
+            desc: 'Повелитель льда. Замедляет и замораживает.',
+            unlockCost: 20,
+            autoAttack: { damage: 12, range: 260, rate: 1600, color: 0x88eeff, slowDuration: 800, slowPercent: 0.20 },
+            abilities: [
+                { key: 'FREEZE_RAY',  name: 'Заморозка',      icon: '❄️',  manaCost: 40, cooldown: 15000,
+                  desc: 'Замораживает врагов по линии к курсору' },
+                { key: 'RAIN',        name: 'Дождь',           icon: '🌧️', manaCost: 45, cooldown: 20000,
+                  desc: 'Холодный дождь замедляет всех и наносит урон' },
+                { key: 'CRYO_HEAL',   name: 'Исцеление',      icon: '💚', manaCost: 60, cooldown: 25000,
+                  desc: 'Постепенное лечение замка (10 HP / сек × 5 сек)' },
+                { key: 'ICE_STORM',   name: 'Ледяной Шторм',  icon: '🌨️', manaCost: 90, cooldown: 60000,
+                  isUlt: true, desc: 'Ледяные осколки падают по всей карте — замораживают и ранят' },
+            ]
+        },
+        GEOMANCER: {
+            name: 'Геомант', icon: '🪨', color: 0xaa8855, portrait: '⛏️',
+            desc: 'Командует землёй. Каменные снаряды, высокий урон.',
+            unlockCost: 30,
+            autoAttack: { damage: 20, range: 240, rate: 2000, color: 0xcc9944 },
+            abilities: [
+                { key: 'QUAKE',       name: 'Разлом',          icon: '💥', manaCost: 40, cooldown: 12000,
+                  desc: 'Землетрясение по линии к курсору — замедление и урон' },
+                { key: 'THORNS',      name: 'Колючая лоза',    icon: '🌿', manaCost: 45, cooldown: 18000,
+                  desc: 'Лоза в области курсора — замедляет и наносит DoT урон' },
+                { key: 'GEO_SHIELD',  name: 'Защитный купол',  icon: '🛡️', manaCost: 60, cooldown: 20000,
+                  desc: 'Замок получает -60% урона на 5 секунд' },
+                { key: 'GOLEM_SUMMON',name: 'Каменный Голем',  icon: '🗿', manaCost: 90, cooldown: 70000,
+                  isUlt: true, desc: '2 голема на поле атакуют ближайших врагов 15 секунд' },
+            ]
+        },
+        PYROMANCER: {
+            name: 'Пиромант', icon: '🔥', color: 0xff6600, portrait: '🔥',
+            desc: 'Повелитель огня. Поджигает, выжигает поле боя.',
+            unlockCost: 40,
+            autoAttack: { damage: 10, range: 270, rate: 1300, color: 0xff8800, burnTicks: 2, burnDamagePercent: 0.30 },
+            abilities: [
+                { key: 'FIRE_RAIN',    name: 'Огненный дождь', icon: '☄️', manaCost: 50, cooldown: 20000,
+                  desc: 'Метеоры падают по всей области — большой урон' },
+                { key: 'LAVACAST',     name: 'Лавакаст',       icon: '🌋', manaCost: 40, cooldown: 18000,
+                  desc: 'Лавовая зона у курсора — замедляет и поджигает' },
+                { key: 'LAVA_ARMOR',   name: 'Лавовая броня',  icon: '🛡️', manaCost: 70, cooldown: 30000,
+                  desc: 'Щит -60% урона + лечение 8 HP/сек пока активен' },
+                { key: 'DRAGON_BREATH',name: 'Дыхание Дракона',icon: '🐉', manaCost: 90, cooldown: 70000,
+                  isUlt: true, desc: 'Огненная волна сметает и поджигает всех врагов на карте' },
+            ]
+        },
+    },
+
+    // ==============================================
     // ЭКИПИРОВКА ПЕРЕД ЗАБЕГОМ
     // ==============================================
-    LOADOUT: { defaultWeaponSlots: 3, defaultMagicSlots: 3, maxSlots: 5 },
+    LOADOUT: { defaultWeaponSlots: 1, defaultMageSlots: 2, maxMageSlots: 4 },
 
     // ==============================================
     // УРОВНИ — бесконечные волны в стиле рогалика
@@ -579,16 +667,6 @@ const CONFIG = {
             desc: 'Мана восстановлена до максимума!',
             chance: 0.10, type: 'positive',
         },
-        ELITE_INVASION: {
-            name: '💀 Нашествие Элиты',
-            desc: 'Вся волна — элитные враги!',
-            chance: 0.02, type: 'challenge',
-        },
-        CASTLE_REPAIR: {
-            name: '🔨 Ремонт Замка',
-            desc: '+50 HP замка',
-            chance: 0.12, type: 'positive', heal: 50,
-        },
         ANCIENT_SCROLL: {
             name: '📜 Древний Свиток',
             desc: 'Дополнительный выбор перка!',
@@ -612,8 +690,8 @@ const CONFIG = {
         },
         DEFENSE: {
             maxHp:  { name: '+HP Замка',   icon: '🏰', maxLevel: 5, costPerLevel: [200,400,700,1100,1600], effectPerLevel: 0.1 },
-            regen:  { name: '+Реген',      icon: '💚', maxLevel: 5, costPerLevel: [300,600,1000,1500,2200], effectPerLevel: 1 },
-            armor:  { name: 'Броня',       icon: '🛡️', maxLevel: 5, costPerLevel: [350,700,1200,1800,2500], effectPerLevel: 0.05 }
+            armor:  { name: 'Броня',       icon: '🛡️', maxLevel: 5, costPerLevel: [350,700,1200,1800,2500], effectPerLevel: 0.05 },
+            soulShield: { name: 'Оберег',  icon: '⛓️', maxLevel: 3, costPerLevel: [500,900,1500], effectPerLevel: 1 }
         },
         MAGIC: {
             cooldown:    { name: '-Кулдаун',    icon: '⏱️', maxLevel: 5, costPerLevel: [200,400,700,1100,1600], effectPerLevel: 0.05 },
@@ -626,12 +704,22 @@ const CONFIG = {
     // АРТЕФАКТЫ (покупаются за гемы, экипируется 3)
     // ==============================================
     ARTIFACTS: {
-        FIRE_AMULET:   { name: 'Огненный Амулет',  icon: '🔥', desc: 'Стартовые огненные патроны',  cost: 5,  effect: { startAmmo: 'FIRE' } },
-        SHIELD_GUARD:  { name: 'Щит Стража',        icon: '🛡️', desc: '+20% HP замка',              cost: 4,  effect: { castleHpMult: 1.2 } },
-        SPEED_RING:    { name: 'Кольцо Скорости',   icon: '💍', desc: '+15% скорострельность',      cost: 5,  effect: { fireRateMult: 0.85 } },
-        MANA_CRYSTAL:  { name: 'Кристалл Маны',     icon: '💎', desc: '-20% кулдаун магии',         cost: 6,  effect: { magicCdMult: 0.8 } },
-        GOLD_CROWN:    { name: 'Золотая Корона',     icon: '👑', desc: '+30% золота',               cost: 5,  effect: { goldMult: 1.3 } },
-        VAMPIRE_FANG:  { name: 'Клык Вампира',       icon: '🧛', desc: '2% кражи жизней',          cost: 7,  effect: { lifesteal: 0.02 } }
+        FIRE_AMULET:    { name: 'Огненный Амулет',   icon: '🔥', desc: 'Стартовые огненные патроны',      cost: 5,  effect: { startAmmo: 'FIRE' } },
+        SHIELD_GUARD:   { name: 'Щит Стража',         icon: '🛡️', desc: '+20% HP замка',                  cost: 4,  effect: { castleHpMult: 1.2 } },
+        SPEED_RING:     { name: 'Кольцо Скорости',    icon: '💍', desc: '+15% скорострельность',          cost: 5,  effect: { fireRateMult: 0.85 } },
+        MANA_CRYSTAL:   { name: 'Кристалл Маны',      icon: '💎', desc: '-20% кулдаун магии',             cost: 6,  effect: { magicCdMult: 0.8 } },
+        GOLD_CROWN:     { name: 'Золотая Корона',      icon: '👑', desc: '+30% золота',                   cost: 5,  effect: { goldMult: 1.3 } },
+        VAMPIRE_FANG:   { name: 'Клык Вампира',        icon: '🧛', desc: '2% кражи жизней',              cost: 7,  effect: { lifesteal: 0.02 } },
+        IRON_BULWARK:   { name: 'Железный Бастион',   icon: '⚙️', desc: '-15% урон по замку',            cost: 6,  effect: { damageReductArt: 0.15 } },
+        SOUL_GEM:       { name: 'Камень Душ',          icon: '🔮', desc: '+3 маны в сек',                 cost: 5,  effect: { manaRegenArt: 3 } },
+        PLAGUE_RUNE:    { name: 'Руна Чумы',           icon: '☣️', desc: 'Все враги стартуют с -10% HP', cost: 8,  effect: { enemyStartHpPct: 0.10 } },
+        VOID_SHARD:     { name: 'Осколок Пустоты',     icon: '🌀', desc: '+2 пробивания всех снарядов',  cost: 7,  effect: { bonusPierce: 2 } },
+        THUNDER_ORB:    { name: 'Громовой Шар',        icon: '⚡', desc: 'Орбитальные осколки электрические', cost: 9, effect: { orbitElectric: true } },
+        ANCIENT_TOME:   { name: 'Фолиант Архимага',   icon: '📖', desc: '+25% урон магии',               cost: 8,  effect: { magicDamageMult: 1.25 } },
+        BERSERKER_AXE:  { name: 'Топор Берсерка',      icon: '🪓', desc: '+10% урон за каждые 10 волн',  cost: 7,  effect: { waveScalingDmg: 0.10 } },
+        SHADOW_CLOAK:   { name: 'Тень Плаща',          icon: '🗡️', desc: '+8% шанс крита',              cost: 6,  effect: { critBonus: 8 } },
+        EMBER_RELIC:    { name: 'Эмберовая Реликвия',  icon: '🌋', desc: 'Стартовый Огненный патрон',     cost: 6,  effect: { startAmmo: 'FIRE' } },
+        FROZEN_HEART:   { name: 'Ледяное Сердце',      icon: '🧊', desc: '+20% длительность заморозки',  cost: 5,  effect: { freezeDurMult: 1.2 } }
     },
     MAX_EQUIPPED_ARTIFACTS: 3
 };

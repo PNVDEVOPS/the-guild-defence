@@ -5,6 +5,7 @@
  */
 class Enemy {
     constructor(scene, type, waveMultiplier, spawnPos) {
+        this.uid = Enemy._uidCounter++;
         this.scene = scene;
         this.type = type;
         this.config = CONFIG.ENEMIES[type];
@@ -422,6 +423,8 @@ class Enemy {
         if (this.x > CONFIG.GAME_WIDTH) return;
         // Armor reduction from talents
         if (this.scene.armorReduction) damage = Math.max(1, damage * (1 - this.scene.armorReduction));
+        // Track last projectile damage for explosiveDeath perk
+        if (damage > 0) this._lastProjectileDamage = damage;
         this.hp -= damage;
         var hp = Math.max(0, this.hp/this.maxHp);
         this.healthBar.scaleX = hp;
@@ -462,6 +465,42 @@ class Enemy {
         if (this.scene.manaOnKillValue > 0) {
             this.scene.mana = Math.min(this.scene.maxMana, this.scene.mana + this.scene.manaOnKillValue);
             this.scene.updateManaBar();
+        }
+        // Bounty Kill: bonus gold for each kill
+        if (this.scene.bountyKillGold > 0) {
+            this.scene.addGold(Math.round(this.scene.bountyKillGold), true);
+        }
+        // Death Nova: explode dealing % of max HP to nearby enemies
+        if (this.scene.deathNovaPercent > 0) {
+            var novaDmg = Math.floor(this.maxHp * this.scene.deathNovaPercent);
+            var novaR = 90, ex = this.x, ey = this.y;
+            for (var ni = 0; ni < this.scene.enemies.length; ni++) {
+                var ne = this.scene.enemies[ni];
+                if (ne && !ne.isDead && ne !== this && Math.hypot(ne.x - ex, ne.y - ey) <= novaR) {
+                    ne.takeDamage(novaDmg, false);
+                }
+            }
+            if (this.scene.vfx) this.scene.vfx.explosion(ex, ey, 0xaa44ff, novaR * 0.5);
+        }
+        // Explosive Death: deal % of last-hit projectile damage to nearby enemies
+        if (this.scene.explosiveDeathValue > 0 && this._lastProjectileDamage) {
+            var expDmg = Math.floor(this._lastProjectileDamage * this.scene.explosiveDeathValue);
+            var expR = 70, ex2 = this.x, ey2 = this.y;
+            for (var ei2 = 0; ei2 < this.scene.enemies.length; ei2++) {
+                var ne2 = this.scene.enemies[ei2];
+                if (ne2 && !ne2.isDead && ne2 !== this && Math.hypot(ne2.x - ex2, ne2.y - ey2) <= expR) {
+                    ne2.takeDamage(expDmg, false);
+                }
+            }
+        }
+        // Berserker: each kill increases fire rate this wave
+        if (this.scene.berserkerBonus > 0) {
+            this.scene.berserkerStacks = (this.scene.berserkerStacks || 0) + 1;
+            var berserkerMult = 1 - Math.min(0.5, this.scene.berserkerBonus * this.scene.berserkerStacks);
+            for (var bwk in this.scene.weaponStates) {
+                var base = CONFIG.WEAPONS[bwk] ? CONFIG.WEAPONS[bwk].baseFireRate : 600;
+                this.scene.weaponStates[bwk].fireRate = Math.max(80, Math.floor(base * berserkerMult));
+            }
         }
         this.scene.totalKills++;
         if (this.config.isBoss) this.scene.onBossKilled(this.type);
@@ -540,6 +579,19 @@ class Enemy {
         this.scene.tweens.add({targets:this,x:newX,duration:150,ease:'Power2',onUpdate:function(){self.updateVisuals();}});
     }
 
+    applyBurn(ticks, damagePercent) {
+        if (this.isBurning) return;
+        this.isBurning = true;
+        var self = this, remaining = ticks || 3, tickDmg = Math.floor(this.maxHp * (damagePercent || 0.1));
+        if (tickDmg < 1) tickDmg = 1;
+        var burnTimer = this.scene.time.addEvent({ delay: 1000, repeat: remaining - 1, callback: function() {
+            if (self.isDead) { burnTimer.remove(); self.isBurning = false; return; }
+            self.takeDamage(tickDmg, false);
+            remaining--;
+            if (remaining <= 0) { self.isBurning = false; }
+        }});
+    }
+
     destroy() {
         if(this.sprite)this.sprite.destroy();
         if(this.maskShape)this.maskShape.destroy();
@@ -556,3 +608,4 @@ class Enemy {
         if (idx>-1) this.scene.enemies.splice(idx,1);
     }
 }
+Enemy._uidCounter = 0;
